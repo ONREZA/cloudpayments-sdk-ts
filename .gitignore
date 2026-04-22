@@ -1,0 +1,26 @@
+node_modules
+dist
+coverage
+*.tsbuildinfo
+
+.DS_Store
+*.log
+npm-debug.log*
+.env
+.env.local
+.env.*.local
+
+.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+specs/raw.prev.html
+specs/ir.prev.json
+.sync-report.md
+
+.turbo
+.cache
+
+# Claude Code local state (scheduled wake-ups etc.)
+.claude/

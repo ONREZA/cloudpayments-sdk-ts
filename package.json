@@ -1,0 +1,87 @@
+{
+	"name": "@onreza/cloudpayments-sdk",
+	"version": "0.1.0",
+	"description": "Типизированный TypeScript SDK для API CloudPayments",
+	"type": "module",
+	"license": "MIT",
+	"author": "ONREZA",
+	"keywords": [
+		"cloudpayments",
+		"payments",
+		"acquiring",
+		"sdk",
+		"typescript"
+	],
+	"engines": {
+		"node": ">=18"
+	},
+	"sideEffects": false,
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
+		},
+		"./webhooks": {
+			"import": {
+				"types": "./dist/webhooks.d.ts",
+				"default": "./dist/webhooks.js"
+			},
+			"require": {
+				"types": "./dist/webhooks.d.cts",
+				"default": "./dist/webhooks.cjs"
+			}
+		},
+		"./errors": {
+			"import": {
+				"types": "./dist/errors.d.ts",
+				"default": "./dist/errors.js"
+			},
+			"require": {
+				"types": "./dist/errors.d.cts",
+				"default": "./dist/errors.cjs"
+			}
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"test": "bun test test/unit",
+		"test:integration": "bun test test/integration",
+		"test:all": "bun test",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"gen": "bun tools/gen.ts",
+		"docs:scrape": "bun tools/scrape.ts",
+		"docs:parse": "bun tools/parse.ts",
+		"docs:sync": "bun tools/sync.ts",
+		"prepare": "lefthook install || echo 'Install lefthook: https://github.com/evilmartians/lefthook'",
+		"release": "onreza-release"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.12",
+		"@types/bun": "latest",
+		"cheerio": "^1.0.0",
+		"lefthook": "^2.1.4",
+		"onreza-release": "^2.7.0",
+		"tsup": "^8.3.5",
+		"typescript": "^6.0.3"
+	}
+}
