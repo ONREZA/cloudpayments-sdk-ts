@@ -3108,7 +3108,10 @@ https://api.cloudpayments.ru/payments/cards/auth — для <a href="#shemy-prov
         <span class="nl">"GatewayName":</span> <span class="s">"Test"</span><span class="p">,</span>
         <span class="nl">"AndroidPay":</span> <span class="k">false</span><span class="p">,</span>
         <span class="nl">"WalletType":</span> <span class="s">""</span><span class="p">,</span>
-        <span class="nl">"TotalFee":</span> <span class="m">0</span>
+        <span class="nl">"TotalFee":</span> <span class="m">0</span><span class="p">,</span>
+        <span class="nl">"VatAboveTotalFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">по</span> <span class="err">НДС</span><span class="p">,</span> <span class="err">начисленного</span> <span class="err">на</span> <span class="err">комиссию</span> <span class="err">Системы</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">одностадийных</span> <span class="err">платежей</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"ProcessorAndPartnerFee":</span> <span class="k">null</span><span class="p">,</span> <span class="err">//Сумма</span> <span class="err">вознаграждения</span> <span class="err">Агента</span> <span class="err">ТСП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"VatWithinProcessorFee":</span> <span class="k">null</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">НДС</span> <span class="err">с</span> <span class="err">вознаграждения</span> <span class="err">платёжного</span> <span class="err">агента</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
     <span class="p">},</span>
     <span class="nl">"Success":</span> <span class="k">false</span><span class="p">,</span>
     <span class="nl">"Message":</span> <span class="k">null</span>
@@ -3178,7 +3181,10 @@ https://api.cloudpayments.ru/payments/cards/auth — для <a href="#shemy-prov
         <span class="nl">"GatewayName":</span> <span class="s">"Test"</span><span class="p">,</span>
         <span class="nl">"AndroidPay":</span> <span class="k">false</span><span class="p">,</span>
         <span class="nl">"WalletType":</span> <span class="s">""</span><span class="p">,</span>
-        <span class="nl">"TotalFee":</span> <span class="m">0</span>
+        <span class="nl">"TotalFee":</span> <span class="m">0</span><span class="p">,</span>
+        <span class="nl">"VatAboveTotalFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">по</span> <span class="err">НДС</span><span class="p">,</span> <span class="err">начисленного</span> <span class="err">на</span> <span class="err">комиссию</span> <span class="err">Системы</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">одностадийных</span> <span class="err">платежей</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"ProcessorAndPartnerFee":</span> <span class="k">null</span><span class="p">,</span> <span class="err">//Сумма</span> <span class="err">вознаграждения</span> <span class="err">Агента</span> <span class="err">ТСП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"VatWithinProcessorFee":</span> <span class="k">null</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">НДС</span> <span class="err">с</span> <span class="err">вознаграждения</span> <span class="err">платёжного</span> <span class="err">агента</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
     <span class="p">},</span>
     <span class="nl">"Success":</span> <span class="k">true</span><span class="p">,</span>
     <span class="nl">"Message":</span> <span class="k">null</span>
@@ -3456,7 +3462,10 @@ https://api.cloudpayments.ru/payments/tokens/auth — для <a href="#shemy-pro
         <span class="nl">"GatewayName":</span> <span class="s">"Test"</span><span class="p">,</span>
         <span class="nl">"AndroidPay":</span> <span class="k">false</span><span class="p">,</span>
         <span class="nl">"WalletType":</span> <span class="s">""</span><span class="p">,</span>
-        <span class="nl">"TotalFee":</span> <span class="m">0</span>
+        <span class="nl">"TotalFee":</span> <span class="m">0</span><span class="p">,</span>
+        <span class="nl">"VatAboveTotalFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">по</span> <span class="err">НДС</span><span class="p">,</span> <span class="err">начисленного</span> <span class="err">на</span> <span class="err">комиссию</span> <span class="err">Системы</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">одностадийных</span> <span class="err">платежей</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"ProcessorAndPartnerFee":</span> <span class="k">null</span><span class="p">,</span> <span class="err">//Сумма</span> <span class="err">вознаграждения</span> <span class="err">Агента</span> <span class="err">ТСП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"VatWithinProcessorFee":</span> <span class="k">null</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">НДС</span> <span class="err">с</span> <span class="err">вознаграждения</span> <span class="err">платёжного</span> <span class="err">агента</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
     <span class="p">},</span>
     <span class="nl">"Success":</span> <span class="k">false</span><span class="p">,</span>
     <span class="nl">"Message":</span> <span class="k">null</span>
@@ -3525,7 +3534,10 @@ https://api.cloudpayments.ru/payments/tokens/auth — для <a href="#shemy-pro
         <span class="nl">"GatewayName":</span> <span class="s">"Test"</span><span class="p">,</span>
         <span class="nl">"AndroidPay":</span> <span class="k">false</span><span class="p">,</span>
         <span class="nl">"WalletType":</span> <span class="s">""</span><span class="p">,</span>
-        <span class="nl">"TotalFee":</span> <span class="m">0</span>
+        <span class="nl">"TotalFee":</span> <span class="m">0</span><span class="p">,</span>
+        <span class="nl">"VatAboveTotalFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">по</span> <span class="err">НДС</span><span class="p">,</span> <span class="err">начисленного</span> <span class="err">на</span> <span class="err">комиссию</span> <span class="err">Системы</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">одностадийных</span> <span class="err">платежей</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"ProcessorAndPartnerFee":</span> <span class="k">null</span><span class="p">,</span> <span class="err">//Сумма</span> <span class="err">вознаграждения</span> <span class="err">Агента</span> <span class="err">ТСП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"VatWithinProcessorFee":</span> <span class="k">null</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">НДС</span> <span class="err">с</span> <span class="err">вознаграждения</span> <span class="err">платёжного</span> <span class="err">агента</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
     <span class="p">},</span>
     <span class="nl">"Success":</span> <span class="k">true</span><span class="p">,</span>
     <span class="nl">"Message":</span> <span class="k">null</span>
@@ -4301,7 +4313,10 @@ https://api.cloudpayments.ru/payments/get</p>
         <span class="nl">"GatewayName":</span> <span class="s">"Test"</span><span class="p">,</span>
         <span class="nl">"AndroidPay":</span> <span class="k">false</span><span class="p">,</span>
         <span class="nl">"WalletType":</span> <span class="s">""</span><span class="p">,</span>
-        <span class="nl">"TotalFee":</span> <span class="m">0</span>
+        <span class="nl">"TotalFee":</span> <span class="m">0</span><span class="p">,</span>
+        <span class="nl">"VatAboveTotalFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">по</span> <span class="err">НДС</span><span class="p">,</span> <span class="err">начисленного</span> <span class="err">на</span> <span class="err">комиссию</span> <span class="err">Системы</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"ProcessorAndPartnerFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Сумма</span> <span class="err">вознаграждения</span> <span class="err">Агента</span> <span class="err">ТСП</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">СБП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+        <span class="nl">"VatWithinProcessorFee":</span> <span class="m">0</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">НДС</span> <span class="err">с</span> <span class="err">вознаграждения</span> <span class="err">платёжного</span> <span class="err">агента</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">СБП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
     <span class="p">},</span>
     <span class="nl">"Success":</span> <span class="k">true</span><span class="p">,</span>
     <span class="nl">"Message":</span> <span class="k">null</span>
@@ -4443,7 +4458,10 @@ https://api.cloudpayments.ru/payments/list</p>
          <span class="nl">"MasterPass":</span><span class="k">false</span><span class="p">,</span>
          <span class="nl">"TotalFee":</span><span class="m">0</span><span class="p">,</span>
          <span class="nl">"EscrowAccumulationId":</span><span class="k">null</span><span class="p">,</span>
-         <span class="nl">"ReasonCode":</span><span class="m">5096</span>
+         <span class="nl">"ReasonCode":</span><span class="m">5096</span><span class="p">,</span>
+         <span class="nl">"VatAboveTotalFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">по</span> <span class="err">НДС</span><span class="p">,</span> <span class="err">начисленного</span> <span class="err">на</span> <span class="err">комиссию</span> <span class="err">Системы</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+         <span class="nl">"ProcessorAndPartnerFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Сумма</span> <span class="err">вознаграждения</span> <span class="err">Агента</span> <span class="err">ТСП</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">СБП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+         <span class="nl">"VatWithinProcessorFee":</span> <span class="m">0</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">НДС</span> <span class="err">с</span> <span class="err">вознаграждения</span> <span class="err">платёжного</span> <span class="err">агента</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">СБП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
       <span class="p">}</span>
    <span class="p">],</span>
    <span class="nl">"Success":</span><span class="k">true</span><span class="p">,</span>
@@ -4580,7 +4598,10 @@ https://api.cloudpayments.ru/v2/payments/list</p>
          <span class="nl">"MasterPass":</span><span class="k">false</span><span class="p">,</span>
          <span class="nl">"TotalFee":</span><span class="m">0</span><span class="p">,</span>
          <span class="nl">"EscrowAccumulationId":</span><span class="k">null</span><span class="p">,</span>
-         <span class="nl">"ReasonCode":</span><span class="m">5096</span>
+         <span class="nl">"ReasonCode":</span><span class="m">5096</span><span class="p">,</span>
+         <span class="nl">"VatAboveTotalFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">по</span> <span class="err">НДС</span><span class="p">,</span> <span class="err">начисленного</span> <span class="err">на</span> <span class="err">комиссию</span> <span class="err">Системы</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+         <span class="nl">"ProcessorAndPartnerFee":</span> <span class="m">0</span><span class="p">,</span> <span class="err">//Сумма</span> <span class="err">вознаграждения</span> <span class="err">Агента</span> <span class="err">ТСП</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">СБП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
+         <span class="nl">"VatWithinProcessorFee":</span> <span class="m">0</span> <span class="err">//Расчетная</span> <span class="err">сумма</span> <span class="err">НДС</span> <span class="err">с</span> <span class="err">вознаграждения</span> <span class="err">платёжного</span> <span class="err">агента</span><span class="p">.</span> <span class="err">Значение</span> <span class="err">заполняется</span> <span class="err">для</span> <span class="err">СБП</span><span class="p">.</span> <span class="err">Параметр</span> <span class="err">передается</span> <span class="err">с</span> <span class="m">29.04</span><span class="p">.</span><span class="m">2026</span>
       <span class="p">}</span>
    <span class="p">],</span>
    <span class="nl">"Success":</span><span class="k">true</span><span class="p">,</span>
@@ -6277,6 +6298,24 @@ https://api.cloudpayments.ru/site/notifications/pay/update:</p>
 <td>Необязательный</td>
 <td>Кастомные поля, которые передает мерчант в запросе оплаты</td>
 </tr>
+<tr>
+<td>VatAboveTotalFee</td>
+<td>Decimal</td>
+<td>Необязательный</td>
+<td>Расчетная сумма по НДС, начисленного на комиссию Системы. Параметр передается с 29.04.2026</td>
+</tr>
+<tr>
+<td>ProcessorAndPartnerFee</td>
+<td>Decimal</td>
+<td>Необязательный</td>
+<td>Сумма вознаграждения Агента ТСП. Значение заполняется для СБП платежей. Параметр передается с 29.04.2026</td>
+</tr>
+<tr>
+<td>VatWithinProcessorFee</td>
+<td>Decimal</td>
+<td>Необязательный</td>
+<td>Расчетная сумма НДС с вознаграждения платёжного агента. Значение заполняется для СБП платежей. Параметр передается с 29.04.2026</td>
+</tr>
 </tbody></table>
 
 <p>В ответ на запрос система ожидает получить ответ в JSON-формате с обязательным параметром code:</p>
@@ -6525,6 +6564,18 @@ https://api.cloudpayments.ru/site/notifications/pay/update:</p>
 <td>Array</td>
 <td>Необязательный</td>
 <td>Кастомные поля, которые передает мерчант в запросе оплаты</td>
+</tr>
+<tr>
+<td>RetryAfter</td>
+<td>yyyy-MM-dd HH:mm:ss</td>
+<td>Необязательный</td>
+<td>Дата и время, когда можно повторить попытку списания. Параметр передаётся с 27.05.2026</td>
+</tr>
+<tr>
+<td>ProviderMessage</td>
+<td>String</td>
+<td>Необязательный</td>
+<td>Детали ошибки, возникшей при попытке списания. Параметр передаётся с 27.05.2026</td>
 </tr>
 </tbody></table>
 
@@ -7591,7 +7642,7 @@ URL-адресом для перенаправления клиента.</p>
 <td>Platform</td>
 <td>string</td>
 <td>Нет</td>
-<td>Платформа клиента (desktop, mobile, ios, android)</td>
+<td>Платформа клиента (desktop, ios, android)</td>
 </tr>
 <tr>
 <td>PublicTerminalId</td>

@@ -12,5 +12,5 @@ export const CP_BASE_URL_KZ = "https://api.cp.kz" as const;
 export const CP_DOCS_URL = "https://developers.cloudpayments.ru" as const;
 
 /** Дата парсинга документации, по которой собраны эти типы. */
-export const CP_SDK_DOCS_SHA256 = "cbf5eb7ef34be44280ccdab6ce283d4648d47e407533cab31b67f480088cc8cb" as const;
-export const CP_SDK_DOCS_PARSED_AT = "2026-04-22T11:02:06.654Z" as const;
+export const CP_SDK_DOCS_SHA256 = "3cdbf7c0ccc1dfef1f5acfddfb46372bf7d2b19d28b8deb8483e6b1fd15477d4" as const;
+export const CP_SDK_DOCS_PARSED_AT = "2026-05-30T06:13:34.770Z" as const;
