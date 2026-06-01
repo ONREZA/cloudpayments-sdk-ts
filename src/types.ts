@@ -92,6 +92,12 @@ export interface Transaction {
 	AndroidPay: boolean;
 	WalletType: string;
 	TotalFee: number;
+	/** Расчётная сумма НДС, начисленного на комиссию Системы. */
+	VatAboveTotalFee?: number;
+	/** Сумма вознаграждения агента ТСП. Заполняется для СБП-платежей. */
+	ProcessorAndPartnerFee?: number;
+	/** Расчётная сумма НДС с вознаграждения платёжного агента. Заполняется для СБП-платежей. */
+	VatWithinProcessorFee?: number;
 }
 
 /**
