@@ -47,7 +47,7 @@ jobs:
       - name: Install cocogitto
         uses: cocogitto/cocogitto-action@v3
         with:
-          check-latest-tag-only: false
+          check: false
 
-      - name: Verify commits
-        run: cog check --from-latest-tag || cog check
+      - name: Verify PR commits
+        run: cog check --ignore-merge-commits ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
