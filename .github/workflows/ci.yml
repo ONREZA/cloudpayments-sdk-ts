@@ -65,10 +65,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install cocogitto
+      - name: Verify PR commits
         uses: cocogitto/cocogitto-action@9a9fe03b31c47444290c0d7f9b1ee1b44ee13f20 # v4.1.0
         with:
-          check: false
-
-      - name: Verify PR commits
-        run: cog check --ignore-merge-commits ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+          command: check
+          args: --ignore-merge-commits ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
