@@ -16,14 +16,10 @@ export function buildBasicAuthHeader(creds: CloudPaymentsCredentials): string {
 	return `Basic ${base64Encode(raw)}`;
 }
 
-/** Кроссрантайм base64 (Node 16+, Bun, Workers, Browser). */
+/** UTF-8 base64 через Web API, доступный в поддерживаемых runtime. */
 function base64Encode(input: string): string {
-	if (typeof btoa === "function") {
-		const bytes = new TextEncoder().encode(input);
-		let binary = "";
-		for (const b of bytes) binary += String.fromCharCode(b);
-		return btoa(binary);
-	}
-	// Node fallback (не требуется для Node 16+, но на всякий случай)
-	return Buffer.from(input, "utf8").toString("base64");
+	const bytes = new TextEncoder().encode(input);
+	let binary = "";
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary);
 }

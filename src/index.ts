@@ -14,6 +14,7 @@ export type {
 	HttpClientOptions,
 	PostOptions,
 	RequestContext,
+	RequestReplaySafety,
 	ResponseContext,
 	TelemetryHooks,
 } from "./core/http.js";
@@ -34,6 +35,7 @@ export {
 	CloudPaymentsNetworkError,
 	CloudPaymentsRateLimitError,
 	CloudPaymentsSdkError,
+	CloudPaymentsUnknownOutcomeError,
 	categorizeReasonCode,
 } from "./errors/index.js";
 export type { ExecOptions } from "./modules/base.js";

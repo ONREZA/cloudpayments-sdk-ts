@@ -22,15 +22,18 @@ const cp = new CloudPaymentsClient({
 });
 
 try {
-	const tx = await cp.payments.chargeCryptogram({
-		Amount: 100,
-		Currency: "RUB",
-		IpAddress: process.env.CP_IP ?? "127.0.0.1",
-		CardCryptogramPacket: process.env.CP_CRYPTOGRAM ?? "",
-		AccountId: process.env.CP_ACCOUNT_ID ?? "user_1",
-		Description: "Test payment via SDK example",
-		// SaveCard: true, — если хотите получить Token для рекарринга
-	});
+	const tx = await cp.payments.chargeCryptogram(
+		{
+			Amount: 100,
+			Currency: "RUB",
+			IpAddress: process.env.CP_IP ?? "127.0.0.1",
+			CardCryptogramPacket: process.env.CP_CRYPTOGRAM ?? "",
+			AccountId: process.env.CP_ACCOUNT_ID ?? "user_1",
+			Description: "Test payment via SDK example",
+			// SaveCard: true, — если хотите получить Token для рекарринга
+		},
+		{ idempotencyKey: process.env.CP_REQUEST_ID ?? crypto.randomUUID() },
+	);
 
 	console.log("✓ Approved");
 	console.log(`  TransactionId=${tx.TransactionId}`);
@@ -43,7 +46,7 @@ try {
 		console.log("⚠ 3-D Secure required");
 		console.log(`  Redirect to: ${err.acsUrl}`);
 		console.log(`  With: MD=${err.transactionId}, PaReq=${err.paReq.slice(0, 30)}…`);
-		console.log(`  After: call cp.payments.post3ds({ TransactionId, PaRes })`);
+		console.log(`  After: call cp.payments.post3ds({ TransactionId, PaRes }, { idempotencyKey })`);
 	} else if (err instanceof CloudPaymentsBusinessError) {
 		console.log("✗ Declined");
 		console.log(`  ReasonCode=${err.reasonCode}`);

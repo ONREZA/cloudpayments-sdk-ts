@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
 	entry: {
@@ -6,11 +6,8 @@ export default defineConfig({
 		webhooks: "src/webhooks/index.ts",
 		errors: "src/errors/index.ts",
 	},
-	format: ["esm", "cjs"],
+	format: "esm",
 	dts: true,
-	clean: true,
 	sourcemap: true,
-	splitting: false,
-	treeshake: true,
-	target: "es2022",
+	outExtensions: () => ({ js: ".js", dts: ".d.ts" }),
 });

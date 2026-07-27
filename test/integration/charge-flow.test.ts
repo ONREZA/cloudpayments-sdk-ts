@@ -34,14 +34,17 @@ describe.skipIf(!HAS_CREDS)("integration: charge flow (real CP, Bun.WebView cryp
 		const cp = makeTestClient();
 		const cryptogram = await cryptogramFor(TEST_CARDS.visaNo3dsApproved);
 
-		const tx = await cp.payments.chargeCryptogram({
-			Amount: 10,
-			Currency: "RUB",
-			IpAddress: "127.0.0.1",
-			CardCryptogramPacket: cryptogram,
-			AccountId: `sdk-charge-${Date.now()}`,
-			Description: "sdk integration: one-step charge",
-		});
+		const tx = await cp.payments.chargeCryptogram(
+			{
+				Amount: 10,
+				Currency: "RUB",
+				IpAddress: "127.0.0.1",
+				CardCryptogramPacket: cryptogram,
+				AccountId: `sdk-charge-${Date.now()}`,
+				Description: "sdk integration: one-step charge",
+			},
+			{ idempotencyKey: `sdk-charge-${crypto.randomUUID()}` },
+		);
 
 		expect(tx.Status).toBe("Completed");
 		expect(tx.Amount).toBe(10);
@@ -54,7 +57,10 @@ describe.skipIf(!HAS_CREDS)("integration: charge flow (real CP, Bun.WebView cryp
 		expect(fetched.TransactionId).toBe(tx.TransactionId);
 		expect(fetched.Status).toBe("Completed");
 
-		const refund = await cp.payments.refund({ TransactionId: tx.TransactionId, Amount: 5 });
+		const refund = await cp.payments.refund(
+			{ TransactionId: tx.TransactionId, Amount: 5 },
+			{ idempotencyKey: `sdk-refund-${tx.TransactionId}-5` },
+		);
 		expect(typeof refund.TransactionId).toBe("number");
 		expect(refund.TransactionId).not.toBe(tx.TransactionId);
 	}, 60_000);
@@ -64,14 +70,17 @@ describe.skipIf(!HAS_CREDS)("integration: charge flow (real CP, Bun.WebView cryp
 		const cryptogram = await cryptogramFor(TEST_CARDS.visa3dsApproved);
 
 		try {
-			await cp.payments.chargeCryptogram({
-				Amount: 10,
-				Currency: "RUB",
-				IpAddress: "127.0.0.1",
-				CardCryptogramPacket: cryptogram,
-				AccountId: `sdk-3ds-${Date.now()}`,
-				Description: "sdk integration: 3DS challenge",
-			});
+			await cp.payments.chargeCryptogram(
+				{
+					Amount: 10,
+					Currency: "RUB",
+					IpAddress: "127.0.0.1",
+					CardCryptogramPacket: cryptogram,
+					AccountId: `sdk-3ds-${Date.now()}`,
+					Description: "sdk integration: 3DS challenge",
+				},
+				{ idempotencyKey: `sdk-3ds-${crypto.randomUUID()}` },
+			);
 			throw new Error("expected 3DS rejection");
 		} catch (err) {
 			expect(err).toBeInstanceOf(CloudPayments3DsRequiredError);
@@ -88,14 +97,17 @@ describe.skipIf(!HAS_CREDS)("integration: charge flow (real CP, Bun.WebView cryp
 		const cryptogram = await cryptogramFor(TEST_CARDS.visaNo3dsDecline);
 
 		try {
-			await cp.payments.chargeCryptogram({
-				Amount: 10,
-				Currency: "RUB",
-				IpAddress: "127.0.0.1",
-				CardCryptogramPacket: cryptogram,
-				AccountId: `sdk-decline-${Date.now()}`,
-				Description: "sdk integration: decline",
-			});
+			await cp.payments.chargeCryptogram(
+				{
+					Amount: 10,
+					Currency: "RUB",
+					IpAddress: "127.0.0.1",
+					CardCryptogramPacket: cryptogram,
+					AccountId: `sdk-decline-${Date.now()}`,
+					Description: "sdk integration: decline",
+				},
+				{ idempotencyKey: `sdk-decline-${crypto.randomUUID()}` },
+			);
 			throw new Error("expected decline");
 		} catch (err) {
 			expect(err).toBeInstanceOf(CloudPaymentsBusinessError);
@@ -113,20 +125,26 @@ describe.skipIf(!HAS_CREDS)("integration: charge flow (real CP, Bun.WebView cryp
 		const cp = makeTestClient();
 		const cryptogram = await cryptogramFor(TEST_CARDS.visaNo3dsApproved);
 
-		const authorized = await cp.payments.authCryptogram({
-			Amount: 20,
-			Currency: "RUB",
-			IpAddress: "127.0.0.1",
-			CardCryptogramPacket: cryptogram,
-			AccountId: `sdk-auth-${Date.now()}`,
-			Description: "sdk integration: two-step auth",
-		});
+		const authorized = await cp.payments.authCryptogram(
+			{
+				Amount: 20,
+				Currency: "RUB",
+				IpAddress: "127.0.0.1",
+				CardCryptogramPacket: cryptogram,
+				AccountId: `sdk-auth-${Date.now()}`,
+				Description: "sdk integration: two-step auth",
+			},
+			{ idempotencyKey: `sdk-auth-${crypto.randomUUID()}` },
+		);
 		expect(authorized.Status).toBe("Authorized");
 
-		await cp.payments.confirm({
-			TransactionId: authorized.TransactionId,
-			Amount: 20,
-		});
+		await cp.payments.confirm(
+			{
+				TransactionId: authorized.TransactionId,
+				Amount: 20,
+			},
+			{ idempotencyKey: `sdk-confirm-${authorized.TransactionId}-20` },
+		);
 
 		const final = await cp.payments.get({ TransactionId: authorized.TransactionId });
 		expect(final.Status).toBe("Completed");
@@ -136,17 +154,23 @@ describe.skipIf(!HAS_CREDS)("integration: charge flow (real CP, Bun.WebView cryp
 		const cp = makeTestClient();
 		const cryptogram = await cryptogramFor(TEST_CARDS.visaNo3dsApproved);
 
-		const authorized = await cp.payments.authCryptogram({
-			Amount: 30,
-			Currency: "RUB",
-			IpAddress: "127.0.0.1",
-			CardCryptogramPacket: cryptogram,
-			AccountId: `sdk-void-${Date.now()}`,
-			Description: "sdk integration: void after auth",
-		});
+		const authorized = await cp.payments.authCryptogram(
+			{
+				Amount: 30,
+				Currency: "RUB",
+				IpAddress: "127.0.0.1",
+				CardCryptogramPacket: cryptogram,
+				AccountId: `sdk-void-${Date.now()}`,
+				Description: "sdk integration: void after auth",
+			},
+			{ idempotencyKey: `sdk-void-auth-${crypto.randomUUID()}` },
+		);
 		expect(authorized.Status).toBe("Authorized");
 
-		await cp.payments.void({ TransactionId: authorized.TransactionId });
+		await cp.payments.void(
+			{ TransactionId: authorized.TransactionId },
+			{ idempotencyKey: `sdk-void-${authorized.TransactionId}` },
+		);
 
 		const final = await cp.payments.get({ TransactionId: authorized.TransactionId });
 		expect(final.Status).toBe("Cancelled");

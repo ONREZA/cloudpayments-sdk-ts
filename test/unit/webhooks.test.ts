@@ -40,7 +40,10 @@ describe("verifyWebhook", () => {
 	});
 
 	test("parses form-urlencoded body on valid signature", async () => {
-		const body = "TransactionId=123&Amount=10.5&TestMode=1&Status=Completed";
+		const body =
+			"TransactionId=123&Amount=10.5&PaymentAmount=10.50&TestMode=1&Status=Completed" +
+			"&AccountId=000123&InvoiceId=000456&CardFirstSix=012345&CardLastFour=0007" +
+			"&Data=%7B%22source%22%3A%22sdk%22%7D";
 		const sig = await makeSig(API_SECRET, body);
 		const payload = await verifyCheckWebhook({
 			rawBody: body,
@@ -51,6 +54,12 @@ describe("verifyWebhook", () => {
 		expect(payload.Amount).toBe(10.5);
 		expect(payload.TestMode).toBe(1);
 		expect(payload.Status).toBe("Completed");
+		expect(payload.PaymentAmount).toBe("10.50");
+		expect(payload.AccountId).toBe("000123");
+		expect(payload.InvoiceId).toBe("000456");
+		expect(payload.CardFirstSix).toBe("012345");
+		expect(payload.CardLastFour).toBe("0007");
+		expect(payload.Data).toEqual({ source: "sdk" });
 	});
 
 	test("parses JSON body when contentType=application/json", async () => {
@@ -60,9 +69,49 @@ describe("verifyWebhook", () => {
 			rawBody: body,
 			signature: sig,
 			apiSecret: API_SECRET,
-			contentType: "application/json",
+			contentType: "application/json; charset=utf-8",
 		});
 		expect(payload.TransactionId).toBe(77);
 		expect(payload.Amount).toBe(42);
+	});
+
+	test("verifies X-Content-HMAC against decoded form body", async () => {
+		const body = "AccountId=user%2B42&Description=Hello+World";
+		const decodedBody = "AccountId=user+42&Description=Hello World";
+		const sig = await makeSig(API_SECRET, decodedBody);
+
+		const payload = await verifyWebhook<{ AccountId: string; Description: string }>({
+			rawBody: body,
+			signature: sig,
+			signatureKind: "x-content-hmac",
+			apiSecret: API_SECRET,
+		});
+
+		expect(payload).toEqual({ AccountId: "user+42", Description: "Hello World" });
+	});
+
+	test("coerces form values from the generated webhook schema", async () => {
+		const body =
+			"Amount=10.5&Period=2&RequireConfirmation=true" +
+			"&CustomFields=%5B%7B%22name%22%3A%22source%22%7D%5D";
+		const sig = await makeSig(API_SECRET, body);
+
+		const payload = await verifyWebhook<{
+			Amount: number;
+			Period: number;
+			RequireConfirmation: boolean;
+			CustomFields: unknown[];
+		}>({
+			rawBody: body,
+			signature: sig,
+			apiSecret: API_SECRET,
+		});
+
+		expect(payload).toEqual({
+			Amount: 10.5,
+			Period: 2,
+			RequireConfirmation: true,
+			CustomFields: [{ name: "source" }],
+		});
 	});
 });

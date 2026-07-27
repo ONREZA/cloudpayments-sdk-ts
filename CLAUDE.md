@@ -1,6 +1,7 @@
 # cloudpayments-sdk-ts
 
-Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru). Публикуется как `@onreza/cloudpayments-sdk`. Работает в Node 18+, Bun, Deno, Cloudflare Workers (WebCrypto + fetch).
+Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru). Публикуется как `@onreza/cloudpayments-sdk`. Требует Node.js 24+; package artifact проверяется на минимальном и актуальном Node 24, unit-контракты — в Bun. Runtime использует стандартные `fetch` и WebCrypto API.
+Сборка содержит один ESM artifact; CommonJS-потребители используют встроенный в Node 24 `require(esm)`.
 
 ## Особенность проекта — нет OpenAPI
 
@@ -22,10 +23,12 @@ bun run docs:scrape    # скачать свежий HTML в specs/raw.html
 bun run docs:parse     # HTML → specs/ir.json
 bun run gen            # IR → src/_generated/
 bun run docs:sync      # всё вместе (для CI)
-bun run build          # tsup: ESM + CJS + DTS, subpath exports
+bun run build          # tsdown: ESM + DTS, subpath exports
 bun test               # bun test
 bun run typecheck
 bun run lint           # biome check .
+bun run verify         # gen freshness + lint + typecheck + unit + build
+bun run package:smoke  # pack + fresh install + import/require/subpath contracts
 ```
 
 ## Архитектура
@@ -38,7 +41,7 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 │  │  ├─ endpoints.ts      # Per-method Request interfaces + URL-константы + ENDPOINTS
 │  │  ├─ webhook-payloads.ts # Check/Pay/Fail/Confirm/Refund/Recurrent/Cancel payloads
 │  │  ├─ shared.ts         # Payer, Receipt, CloudPaymentsMeta (объекты из request)
-│  │  ├─ meta.ts           # BASE_URL, docs sha256/parsedAt
+│  │  ├─ meta.ts           # BASE_URL, package metadata, docs sha256
 │  │  └─ index.ts          # re-export
 │  ├─ core/                # транспорт
 │  │  ├─ http.ts           # CloudPaymentsHttpClient (Basic Auth, retry, timeout)
@@ -55,7 +58,7 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 │  ├─ types.ts             # РУЧНЫЕ Response shapes: Transaction, Subscription, Order, ThreeDsChallenge, TokenRecord, ApiEnvelope
 │  ├─ client.ts            # CloudPaymentsClient — composition root
 │  └─ index.ts             # публичные exports
-├─ test/unit/              # bun test — 27 тестов
+├─ test/unit/              # быстрые contract-тесты без сети
 ├─ tools/                  # pipeline scrape→parse→gen
 ├─ specs/
 │  ├─ raw.html             # (gitignored отдельно) скачанный HTML
@@ -77,19 +80,21 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 └─────────────────┬─────────────────────────────────────┘
                   │
 ┌─ Transport core ─────────────────────────────────────┐
-│ HttpClient: Basic auth, retry 5xx/429/network,       │
-│ X-Request-ID, timeout, маппинг → доменные ошибки     │
+│ HttpClient: Basic auth, replay-safe retry, timeout,  │
+│ X-Request-ID, origin boundary, доменные ошибки       │
 └───────────────────────────────────────────────────────┘
 ```
 
 ### Ключевые паттерны
 
 - **Все API-ответы обёрнуты в `{ Success, Message, Model }`**. В модулях распаковывается через `BaseModule.exec()` → при `Success:true` возвращает `Model`, при `Success:false` бросает `CloudPaymentsBusinessError` или `CloudPayments3DsRequiredError` (если детектирован 3DS-challenge).
-- **3DS detection** включён для charge/auth (по флагу `detect3ds: true` в exec-опциях). Распознаётся по форме `Model: { AcsUrl, PaReq }`.
+- **3DS detection** включён внутри charge/auth wrappers. Распознаётся по форме `Model: { AcsUrl, PaReq }`; пользователь не может случайно отключить этот endpoint-инвариант.
 - **Идемпотентность**: через `opts.idempotencyKey` → заголовок `X-Request-ID`. CP хранит результат 1 час.
-- **Retry двойной потолок**: `429` ретраится с `Retry-After` (если есть), `5xx` — с exponential backoff + full jitter. Сетевые ошибки — тоже ретрит, если `retryOnNetworkError: true`. Default: 3 попытки.
-- **AbortError** пользователя пробрасывается как есть; timeout (от нашего AbortController) заворачивается в `CloudPaymentsNetworkError`.
-- **Webhook verify**: HMAC-SHA256 через WebCrypto (кроссрантаймный), base64-сравнение в constant time. Тип payload пользователь передаёт явно через `verifyCheckWebhook`/`verifyPayWebhook`/… (CP не шлёт тип заголовком — разные URL на стороне ТСП).
+- **Retry**: read-only POST можно повторять. Mutation повторяется только с `idempotencyKey`; иначе timeout/network означает `CloudPaymentsUnknownOutcomeError` и требует сверки, а не replay.
+- **Telemetry boundary**: hooks не получают `Authorization` и body; их исключения уходят в `onHookError` и не меняют результат запроса.
+- **Origin ownership**: generated endpoints — относительные paths. `CloudPaymentsClient.baseUrl` выбирает RU/EU/KZ; абсолютный URL другого origin и HTTP redirects отклоняются до отправки Basic credentials.
+- **AbortError** пользователя пробрасывается как есть; timeout безопасной операции заворачивается в `CloudPaymentsNetworkError`.
+- **Webhook verify**: `Content-HMAC` считается по encoded body, `X-Content-HMAC` — по URL-decoded body. Form parser преобразует только поля, чьи типы известны из CP contract; идентификаторы и части номера карты остаются строками.
 
 ## Тип-система
 
@@ -97,7 +102,7 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 
 - `*Request` — один interface на endpoint+URL, префиксованный модулем:
   - `PaymentsChargeCryptogramRequest`, `PaymentsAuthCryptogramRequest`, `SubscriptionsCreateRequest`, `OrdersCreateRequest` …
-- `*_URL` — SCREAMING_SNAKE_CASE константы:
+- `*_URL` — относительные SCREAMING_SNAKE_CASE path-константы:
   - `PAYMENTS_CHARGE_CRYPTOGRAM_URL`, `SUBSCRIPTIONS_CREATE_URL`, …
 - `ENDPOINTS` — реестр `{ module: { method: { url, method } } }`.
 - Handbook enums — `type TransactionStatus = "Authorized" | ...`, `type ReasonCode = 5001 | 5051 | ...` (numeric union), плюс `*_VALUES` массивы и `*Labels` / `*Info` объекты.
@@ -115,7 +120,8 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 
 ## Webhooks
 
-CP шлёт POST с HMAC-SHA256 в заголовке `Content-HMAC` или `X-Content-HMAC` (base64, ключ = API Secret, сообщение = raw body).
+CP шлёт POST с HMAC-SHA256 в заголовке `Content-HMAC` или `X-Content-HMAC`.
+Первый подписывает encoded body, второй — URL-decoded body.
 
 ```ts
 import { verifyCheckWebhook, WebhookVerificationError } from "@onreza/cloudpayments-sdk/webhooks";
@@ -123,6 +129,7 @@ try {
   const payload = await verifyCheckWebhook({
     rawBody: req.body,
     signature: req.headers["content-hmac"],
+    signatureKind: "content-hmac",
     apiSecret: process.env.CP_API_SECRET,
   });
   // payload типизирован как CheckNotificationPayload
@@ -158,11 +165,26 @@ CP меняет доку редко, но когда меняет — `bun run d
 ## Интеграционные тесты
 
 ```bash
-bun run test              # unit (27 тестов, быстро, без сети)
-bun run test:integration  # integration (19 тестов, требует env + сеть + Chrome)
+bun run test              # unit, быстро и без сети
+bun run test:integration  # provider integration; mutation flow требует env + сеть + Chrome
 ```
 
 Все integration-тесты автоматически skip-ятся без `CP_TEST_PUBLIC_ID` и `CP_TEST_API_SECRET` в env (лежат в `.env`, gitignored).
+
+`.github/workflows/integration.yml` вручную запускает read contract или полный
+mutation lifecycle. Автоматическое расписание можно включать только после
+provisioning `CP_TEST_PUBLIC_ID` и `CP_TEST_API_SECRET`; full suite использует
+environment `cloudpayments-test`.
+
+## CI и release
+
+- `sync-docs.yml` создаёт PR через GitHub App, чтобы обычный `pull_request` CI реально запускался.
+- `release.yml` переиспользует тот же App token: каждый push в `main` создаёт или обновляет Release Please PR, а его merge создаёт tag и GitHub Release.
+- Required secrets: `SYNC_APP_CLIENT_ID`, `SYNC_APP_PRIVATE_KEY`. App нужны только `Contents: write` и `Pull requests: write` для этого репозитория; installation token запрашивает те же две permissions явно. Release Please запускается без labels, поэтому `Issues: write` не требуется.
+- Workflow намеренно падает на preflight, если App secrets не provisioned: иначе docs PR создавался бы от `GITHUB_TOKEN`, а его CI снова не запускался бы.
+- `CI` — единственный владелец verify для PR; sync workflow не дублирует проверки.
+- Release Please PR меняет `CHANGELOG.md`, `package.json` и manifest; обязательный CI проверяет release candidate до merge.
+- После создания GitHub Release publish job собирает точный tag и публикует его через npm trusted publishing OIDC + provenance.
 
 ### Что тестируется
 

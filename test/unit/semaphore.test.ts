@@ -36,4 +36,18 @@ describe("Semaphore", () => {
 		});
 		expect(ran).toBe(true);
 	});
+
+	test("removes an aborted waiter from the queue", async () => {
+		const sem = new Semaphore(1);
+		const release = await sem.acquire();
+		const controller = new AbortController();
+		const queued = sem.acquire(controller.signal);
+
+		controller.abort(new DOMException("Cancelled", "AbortError"));
+		await expect(queued).rejects.toMatchObject({ name: "AbortError" });
+
+		release();
+		const nextRelease = await sem.acquire();
+		nextRelease();
+	});
 });

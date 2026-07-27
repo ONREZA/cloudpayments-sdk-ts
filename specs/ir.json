@@ -1,9 +1,8 @@
 {
   "source": {
     "url": "https://developers.cloudpayments.ru/",
-    "parsedAt": "2026-06-01T08:22:32.118Z",
-    "htmlSha256": "3cdbf7c0ccc1dfef1f5acfddfb46372bf7d2b19d28b8deb8483e6b1fd15477d4",
-    "htmlSize": 585307
+    "htmlSha256": "8970567fa60c6de9f3a5636cc19ff6a895609ccae6bcb494fca38fc5b562ffc0",
+    "htmlSize": 589205
   },
   "sections": [
     {
@@ -4024,7 +4023,7 @@
           "params": [
             {
               "name": "Date",
-              "type": "Date",
+              "type": "String",
               "required": true,
               "description": "Дата создания операций"
             },
@@ -4046,7 +4045,7 @@
               "rows": [
                 {
                   "Параметр": "Date",
-                  "Формат": "Date",
+                  "Формат": "String",
                   "Применение": "Обязательный",
                   "Описание": "Дата создания операций"
                 },
@@ -9364,6 +9363,98 @@
               "subgroups": []
             }
           ]
+        }
+      ]
+    },
+    {
+      "anchor": "tsifrovoy-rubl",
+      "title": "Цифровой рубль",
+      "level": 1,
+      "description": "![digital-ruble](images/digitalruble-42849866.jpg)",
+      "groups": [
+        {
+          "anchor": "priem-tsifrovyh-rubley-s-1-sentyabrya-2026-goda",
+          "title": "Прием цифровых рублей с 1 сентября 2026 года",
+          "level": 2,
+          "description": "Цифровой рубль — цифровая форма российской национальной валюты, которую выпускает Банк России. Он равен наличному рублю и используется для платежей через платформу Банка России.",
+          "notes": [],
+          "urls": [],
+          "params": [],
+          "tables": [],
+          "requestExamples": [],
+          "responseExamples": [],
+          "otherCodeBlocks": [],
+          "subgroups": []
+        },
+        {
+          "anchor": "na-kogo-rasprostranyayutsya-trebovaniya",
+          "title": "На кого распространяются требования",
+          "level": 2,
+          "description": "С 1 сентября 2026 года принимать цифровые рубли должны будут продавцы и исполнители, которые одновременно: - Получили за предыдущий год выручку более 120 млн рублей - Работают с банком, признанным значимым на рынке платежных услуг - Принимают оплату от физических лиц",
+          "notes": [],
+          "urls": [],
+          "params": [],
+          "tables": [],
+          "requestExamples": [],
+          "responseExamples": [],
+          "otherCodeBlocks": [],
+          "subgroups": []
+        },
+        {
+          "anchor": "kak-budut-rasshiryatsya-trebovaniya",
+          "title": "Как будут расширяться требования",
+          "level": 2,
+          "description": "С 1 сентября 2027 года требования распространятся на компании с выручкой более 30 млн рублей, а с 1 сентября 2028 года — на остальных продавцов с выручкой от 20 млн рублей.",
+          "notes": [],
+          "urls": [],
+          "params": [],
+          "tables": [],
+          "requestExamples": [],
+          "responseExamples": [],
+          "otherCodeBlocks": [],
+          "subgroups": []
+        },
+        {
+          "anchor": "na-kogo-trebovaniya-ne-rasprostranyayutsya",
+          "title": "На кого требования не распространяются",
+          "level": 2,
+          "description": "Компании с совокупной годовой выручкой менее 20 млн рублей не обязаны принимать цифровые рубли.\n\nТребование также не распространяется: - На отдельные торговые точки с выручкой менее 5 млн рублей в год, даже если совокупная выручка всей компании превышает 20 млн рублей - На точки продаж без доступа к интернету",
+          "notes": [],
+          "urls": [],
+          "params": [],
+          "tables": [],
+          "requestExamples": [],
+          "responseExamples": [],
+          "otherCodeBlocks": [],
+          "subgroups": []
+        },
+        {
+          "anchor": "priem-tsifrovyh-rubley-v-cloudpayments",
+          "title": "Прием цифровых рублей в CloudPayments",
+          "level": 2,
+          "description": "CloudPayments планирует запустить прием разовых платежей в цифровых рублях с 1 сентября 2026 года. Операции будут отображаться в Личном кабинете и включаться в реестры и отчетность.\n\nДо конца 2026 года комиссия за прием платежей в цифровых рублях составит 0%. Регулярные платежи и сохранение счета для повторных оплат на старте поддерживаться не будут.",
+          "notes": [],
+          "urls": [],
+          "params": [],
+          "tables": [],
+          "requestExamples": [],
+          "responseExamples": [],
+          "otherCodeBlocks": [],
+          "subgroups": []
+        },
+        {
+          "anchor": "kak-podklyuchit",
+          "title": "Как подключить",
+          "level": 2,
+          "description": "Если вы уже принимаете платежи через CloudPayments, обратитесь к своему менеджеру или напишите в чат поддержки в Личном кабинете.\n\nЕсли вы еще не работаете с CloudPayments, оставьте [заявку на подключение](https://cloudpayments.ru/#section-request).\n\nДокументацию по интеграции мы предоставим действующим клиентам по запросу, а новым — после подключения.",
+          "notes": [],
+          "urls": [],
+          "params": [],
+          "tables": [],
+          "requestExamples": [],
+          "responseExamples": [],
+          "otherCodeBlocks": [],
+          "subgroups": []
         }
       ]
     },

@@ -49,7 +49,7 @@ interface EndpointSummary {
 	anchor: string;
 	title: string;
 	urls: string[];
-	params: number;
+	params: Array<{ name: string; type: string; required: boolean }>;
 }
 
 function collectEndpoints(ir: IR): EndpointSummary[] {
@@ -61,7 +61,7 @@ function collectEndpoints(ir: IR): EndpointSummary[] {
 					anchor: g.anchor,
 					title: `${s.title} → ${g.title}`,
 					urls: g.urls.map((u) => u.url),
-					params: g.params.length,
+					params: g.params.map(({ name, type, required }) => ({ name, type, required })),
 				});
 			}
 			for (const sg of g.subgroups) {
@@ -70,7 +70,7 @@ function collectEndpoints(ir: IR): EndpointSummary[] {
 						anchor: sg.anchor,
 						title: `${s.title} → ${g.title} → ${sg.title}`,
 						urls: sg.urls.map((u) => u.url),
-						params: sg.params.length,
+						params: sg.params.map(({ name, type, required }) => ({ name, type, required })),
 					});
 				}
 			}
@@ -107,27 +107,44 @@ async function makeReport(): Promise<string> {
 	lines.push("## CloudPayments docs sync", "");
 	lines.push(`- htmlSize: ${ir.source.htmlSize} bytes`);
 	lines.push(`- htmlSha256: \`${ir.source.htmlSha256.slice(0, 16)}…\``);
-	lines.push(`- parsedAt: ${ir.source.parsedAt}`);
 	lines.push("");
 
 	if (prev) {
 		const before = collectEndpoints(prev);
 		const beforeSet = new Set(before.map((e) => e.anchor));
+		const beforeByAnchor = new Map(before.map((e) => [e.anchor, e]));
 		const afterSet = new Set(current.map((e) => e.anchor));
 		const added = current.filter((e) => !beforeSet.has(e.anchor));
 		const removed = before.filter((e) => !afterSet.has(e.anchor));
+		const changed = current.filter((endpoint) => {
+			const previous = beforeByAnchor.get(endpoint.anchor);
+			return (
+				previous !== undefined &&
+				JSON.stringify([previous.urls, previous.params]) !==
+					JSON.stringify([endpoint.urls, endpoint.params])
+			);
+		});
 
-		if (added.length === 0 && removed.length === 0) {
+		if (added.length === 0 && removed.length === 0 && changed.length === 0) {
 			lines.push("**No endpoint changes.**", "");
 		} else {
 			if (added.length > 0) {
 				lines.push("### ➕ Added endpoints", "");
-				for (const e of added) lines.push(`- \`${e.anchor}\` — ${e.title} (${e.params} params)`);
+				for (const e of added) {
+					lines.push(`- \`${e.anchor}\` — ${e.title} (${e.params.length} params)`);
+				}
 				lines.push("");
 			}
 			if (removed.length > 0) {
 				lines.push("### ➖ Removed endpoints", "");
 				for (const e of removed) lines.push(`- \`${e.anchor}\` — ${e.title}`);
+				lines.push("");
+			}
+			if (changed.length > 0) {
+				lines.push("### ✏️ Changed endpoint contracts", "");
+				for (const e of changed) {
+					lines.push(`- \`${e.anchor}\` — ${e.title} (${e.params.length} params)`);
+				}
 				lines.push("");
 			}
 		}

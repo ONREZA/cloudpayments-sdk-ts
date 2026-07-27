@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 /**
  * Генерирует src/_generated/ из specs/ir.json:
- *   - meta.ts          — BASE_URL, SDK_API_DATE и пр.
+ *   - meta.ts          — package metadata, BASE_URL и docs sha256
  *   - handbooks.ts     — типы + мап-объекты для справочников (статусы, коды ошибок, валюты, …)
  *   - endpoints.ts     — Request-типы и URL-константы для всех API-методов
  *   - webhook-payloads.ts — payload-типы для входящих уведомлений
  *   - index.ts         — re-export всего
  */
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Group, IR, Param, Table } from "./parse.ts";
 
@@ -284,23 +284,19 @@ function fieldName(name: string): string {
 
 /* ──────────────────────── meta.ts ──────────────────────── */
 
-async function writeMeta(ir: IR): Promise<string> {
-	const pkg = (await Bun.file(resolve(import.meta.dir, "..", "package.json")).json()) as {
-		name: string;
-		version: string;
-	};
+function writeMeta(ir: IR): string {
 	return `${HEADER}
-export const CP_SDK_NAME = ${JSON.stringify(pkg.name)} as const;
-export const CP_SDK_VERSION = ${JSON.stringify(pkg.version)} as const;
+import packageMetadata from "../../package.json" with { type: "json" };
+
+export const CP_SDK_NAME = packageMetadata.name;
+export const CP_SDK_VERSION = packageMetadata.version;
 
 export const CP_BASE_URL = ${JSON.stringify(BASE_URL_PROD)} as const;
 export const CP_BASE_URL_EU = ${JSON.stringify(BASE_URL_EU)} as const;
 export const CP_BASE_URL_KZ = ${JSON.stringify(BASE_URL_KZ)} as const;
 export const CP_DOCS_URL = ${JSON.stringify(DOCS_URL)} as const;
 
-/** Дата парсинга документации, по которой собраны эти типы. */
 export const CP_SDK_DOCS_SHA256 = ${JSON.stringify(ir.source.htmlSha256)} as const;
-export const CP_SDK_DOCS_PARSED_AT = ${JSON.stringify(ir.source.parsedAt)} as const;
 `;
 }
 
@@ -467,9 +463,14 @@ function renderEndpointBlock(ep: ResolvedEndpoint): string {
 		const typeName = `${prefix}${pascal(url.methodName)}Request`;
 		const urlConst = `${pascalToScreamingSnake(ep.alias.module)}_${pascalToScreamingSnake(url.methodName)}_URL`;
 		out.push(renderRequestType(typeName, ep.group));
-		out.push(`export const ${urlConst} = ${JSON.stringify(url.url)} as const;\n`);
+		out.push(`export const ${urlConst} = ${JSON.stringify(endpointPath(url.url))} as const;\n`);
 	}
 	return out.join("\n");
+}
+
+function endpointPath(rawUrl: string): string {
+	const url = new URL(rawUrl);
+	return `${decodeURI(url.pathname)}${url.search}`;
 }
 
 function renderRequestType(typeName: string, group: Group): string {
@@ -530,7 +531,7 @@ function renderEndpointRegistry(endpoints: ResolvedEndpoint[]): string {
 		out.push(`\t${module}: {\n`);
 		for (const m of methods) {
 			out.push(
-				`\t\t${m.methodName}: { url: ${JSON.stringify(m.url)}, method: "POST" as const },\n`,
+				`\t\t${m.methodName}: { url: ${JSON.stringify(endpointPath(m.url))}, method: "POST" as const },\n`,
 			);
 		}
 		out.push("\t},\n");
@@ -544,8 +545,9 @@ function renderEndpointRegistry(endpoints: ResolvedEndpoint[]): string {
 function writeWebhookPayloads(ir: IR): string {
 	const parts: string[] = [HEADER];
 	parts.push(
-		`import type { NotificationType, OperationType, TransactionStatus, Currency, CultureName } from "./handbooks.js";\n`,
+		`import type { OperationType, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";\n`,
 	);
+	parts.push(renderWebhookFieldKinds(ir));
 
 	for (const spec of WEBHOOK_PAYLOADS) {
 		const g = findGroupDeep(ir, spec.anchor);
@@ -560,6 +562,40 @@ function writeWebhookPayloads(ir: IR): string {
 	return parts.join("\n");
 }
 
+type WebhookFieldKind = "string" | "number" | "boolean" | "json";
+
+function renderWebhookFieldKinds(ir: IR): string {
+	const fields = new Map<string, WebhookFieldKind>();
+	for (const spec of WEBHOOK_PAYLOADS) {
+		const group = findGroupDeep(ir, spec.anchor);
+		if (!group) continue;
+		for (const param of group.params) {
+			const kind = webhookFieldKind(tsTypeForWebhook(param, spec.type));
+			const existing = fields.get(param.name);
+			if (existing && existing !== kind) {
+				throw new Error(
+					`Webhook field ${param.name} has conflicting runtime kinds: ${existing} and ${kind}`,
+				);
+			}
+			fields.set(param.name, kind);
+		}
+	}
+
+	const entries = [...fields]
+		.filter(([, kind]) => kind !== "string")
+		.sort(([left], [right]) => left.localeCompare(right))
+		.map(([name, kind]) => `\t${fieldName(name)}: ${JSON.stringify(kind)},`)
+		.join("\n");
+	return `${jsDoc(["Runtime coercion schema для form-urlencoded webhook payload-ов."])}export const WEBHOOK_FIELD_KINDS = {\n${entries}\n} as const;\n`;
+}
+
+function webhookFieldKind(tsType: string): WebhookFieldKind {
+	if (tsType === "number" || tsType === "0 | 1") return "number";
+	if (tsType === "boolean") return "boolean";
+	if (tsType === "Record<string, unknown>" || tsType === "unknown[]") return "json";
+	return "string";
+}
+
 function renderWebhookPayload(typeName: string, notificationType: string, group: Group): string {
 	const out: string[] = [];
 	out.push(
@@ -571,7 +607,7 @@ function renderWebhookPayload(typeName: string, notificationType: string, group:
 	);
 	out.push(`export interface ${typeName} {\n`);
 	for (const p of group.params) {
-		const tsType = tsTypeForWebhook(p);
+		const tsType = tsTypeForWebhook(p, notificationType);
 		const optionalFlag = p.required ? "" : "?";
 		const desc = cleanDescription(p.description);
 		if (desc) out.push(`\t/** ${escapeJsDoc(desc)} */\n`);
@@ -581,10 +617,11 @@ function renderWebhookPayload(typeName: string, notificationType: string, group:
 	return out.join("");
 }
 
-function tsTypeForWebhook(param: Param): string {
+function tsTypeForWebhook(param: Param, notificationType: string): string {
 	const name = param.name.toLowerCase();
 	if (name === "currency" || name === "paymentcurrency") return "Currency";
 	if (name === "culturename") return "CultureName";
+	if (name === "status" && notificationType === "Recurrent") return "SubscriptionStatus";
 	if (name === "status") return "TransactionStatus";
 	if (name === "operationtype") return "OperationType";
 	return tsTypeFor(param);
@@ -592,7 +629,7 @@ function tsTypeForWebhook(param: Param): string {
 
 function renderWebhookUnion(): string {
 	const out: string[] = [];
-	out.push(jsDoc(["Discriminated union всех входящих payload-ов по заголовку X-Content-HMAC."]));
+	out.push(jsDoc(["Union всех входящих webhook payload-ов. Тип определяется endpoint-ом."]));
 	const members = WEBHOOK_PAYLOADS.map((w) => w.name).join(" | ");
 	out.push(`export type AnyWebhookPayload = ${members};\n`);
 	return out.join("");
@@ -692,10 +729,8 @@ async function main() {
 	}
 	const ir = await loadIR();
 
-	await mkdir(OUT_DIR, { recursive: true });
-
 	const files: Array<[string, string]> = [
-		["meta.ts", await writeMeta(ir)],
+		["meta.ts", writeMeta(ir)],
 		["handbooks.ts", writeHandbooks(ir)],
 		["endpoints.ts", writeEndpoints(ir)],
 		["webhook-payloads.ts", writeWebhookPayloads(ir)],
@@ -703,6 +738,8 @@ async function main() {
 		["index.ts", writeIndex()],
 	];
 
+	await rm(OUT_DIR, { recursive: true, force: true });
+	await mkdir(OUT_DIR, { recursive: true });
 	for (const [name, content] of files) {
 		const out = resolve(OUT_DIR, name);
 		await writeFile(out, content);

@@ -4,10 +4,7 @@
  * Эндпоинты с плейсхолдером {Type} в URL — нужно подставить NotificationType.
  */
 
-import type {
-	SettingsGetNotificationRequest,
-	SettingsUpdateNotificationRequest,
-} from "../_generated/endpoints.js";
+import type { SettingsUpdateNotificationRequest } from "../_generated/endpoints.js";
 import {
 	SETTINGS_GET_NOTIFICATION_URL,
 	SETTINGS_UPDATE_NOTIFICATION_URL,
@@ -19,31 +16,28 @@ export interface NotificationSetting {
 	IsEnabled: boolean;
 	Address: string;
 	HttpMethod: "GET" | "POST";
-	Encoding: string;
-	Format: "CloudPayments" | "Robokassa";
+	Encoding: "UTF8" | "Windows1251";
+	Format: "CloudPayments" | "QIWI" | "RT";
 }
 
 export class SettingsModule extends BaseModule {
 	/** Получить настройки выбранного типа уведомления. */
-	getNotification(
-		type: NotificationType,
-		body: SettingsGetNotificationRequest = {} as SettingsGetNotificationRequest,
-		opts?: ExecOptions,
-	): Promise<NotificationSetting> {
-		return this.exec<SettingsGetNotificationRequest, NotificationSetting>(
+	getNotification(type: NotificationType, opts?: ExecOptions): Promise<NotificationSetting> {
+		return this.exec<Record<string, never>, NotificationSetting>(
 			SETTINGS_GET_NOTIFICATION_URL.replace("{Type}", type),
-			body,
+			{},
 			opts,
+			{ replaySafety: "safe" },
 		);
 	}
 
 	/** Изменить настройки уведомления. */
 	updateNotification(
-		type: NotificationType,
-		body: SettingsUpdateNotificationRequest,
+		type: Exclude<NotificationType, "Check">,
+		body: Omit<SettingsUpdateNotificationRequest, "Type">,
 		opts?: ExecOptions,
 	): Promise<void> {
-		return this.exec<SettingsUpdateNotificationRequest, void>(
+		return this.exec<Omit<SettingsUpdateNotificationRequest, "Type">, void>(
 			SETTINGS_UPDATE_NOTIFICATION_URL.replace("{Type}", type),
 			body,
 			opts,

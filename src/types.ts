@@ -14,6 +14,7 @@ import type {
 	SubscriptionStatus,
 	TransactionStatus,
 } from "./_generated/handbooks.js";
+import type { Payer } from "./_generated/shared.js";
 
 /** Стандартная обёртка всех ответов CP API. */
 export interface ApiEnvelope<T = unknown> {
@@ -23,6 +24,8 @@ export interface ApiEnvelope<T = unknown> {
 	Message: string | null;
 	/** Полезная нагрузка ответа. Отсутствует для некоторых методов (напр. test). */
 	Model?: T;
+	/** Дополнительный код ошибки, который присутствует в части ответов API. */
+	ErrorCode?: string | number | null;
 }
 
 /**
@@ -44,11 +47,11 @@ export interface Transaction {
 	PaymentAmount: number;
 	PaymentCurrency: Currency;
 	PaymentCurrencyCode: number;
-	InvoiceId: string | null;
+	InvoiceId: string | number | null;
 	AccountId: string | null;
 	Email: string | null;
 	Description: string | null;
-	JsonData: Record<string, unknown> | null;
+	JsonData: string | null;
 	/** MS-style `/Date(epoch)/`. Предпочитайте `*DateIso`. */
 	CreatedDate: string;
 	CreatedDateIso: string;
@@ -81,7 +84,7 @@ export interface Transaction {
 	Issuer: string | null;
 	IssuerBankCountry: string | null;
 	EscrowAccumulationId: string | null;
-	CultureName: CultureName | "ru" | "en" | string;
+	CultureName: CultureName | "ru" | "en" | "kk";
 	CardHolderMessage: string;
 	Type: number;
 	Refunded: boolean;
@@ -92,12 +95,19 @@ export interface Transaction {
 	AndroidPay: boolean;
 	WalletType: string;
 	TotalFee: number;
+	IsLocalOrder?: boolean;
+	HideInvoiceId?: boolean;
+	Gateway?: number | string;
+	MasterPass?: boolean;
+	InfoShopData?: unknown;
+	Receiver?: Payer | null;
+	TransactionIsInProcess?: boolean;
 	/** Расчётная сумма НДС, начисленного на комиссию Системы. */
-	VatAboveTotalFee?: number;
+	VatAboveTotalFee?: number | null;
 	/** Сумма вознаграждения агента ТСП. Заполняется для СБП-платежей. */
-	ProcessorAndPartnerFee?: number;
+	ProcessorAndPartnerFee?: number | null;
 	/** Расчётная сумма НДС с вознаграждения платёжного агента. Заполняется для СБП-платежей. */
-	VatWithinProcessorFee?: number;
+	VatWithinProcessorFee?: number | null;
 }
 
 /**
@@ -121,8 +131,8 @@ export interface ThreeDsChallenge {
 export interface Subscription {
 	Id: string;
 	AccountId: string;
-	Description: string;
-	Email: string;
+	Description: string | null;
+	Email: string | null;
 	Amount: number;
 	Currency: Currency;
 	CurrencyCode: number;

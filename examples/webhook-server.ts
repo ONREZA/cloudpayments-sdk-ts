@@ -66,13 +66,15 @@ const server = Bun.serve({
 		const type = url.pathname.replace(/^\/cp\/webhook\//, "").toLowerCase();
 		if (!isKnownType(type)) return new Response("unknown type", { status: 404 });
 
-		const signature = req.headers.get("content-hmac") ?? req.headers.get("x-content-hmac");
+		const contentHmac = req.headers.get("content-hmac");
+		const signature = contentHmac ?? req.headers.get("x-content-hmac");
 		const rawBody = await req.text();
 
 		try {
 			const payload = await VERIFIERS[type]({
 				rawBody,
 				signature,
+				signatureKind: contentHmac ? "content-hmac" : "x-content-hmac",
 				apiSecret: API_SECRET,
 				// Убедитесь что формат совпадает с настройками в ЛК CP:
 				contentType: "application/json",

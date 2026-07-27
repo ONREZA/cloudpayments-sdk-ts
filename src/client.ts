@@ -15,8 +15,10 @@ export interface CloudPaymentsClientOptions extends Omit<HttpClientOptions, "cre
  *
  * ```ts
  * const cp = new CloudPaymentsClient({ publicId, apiSecret });
- * const tx = await cp.payments.chargeCryptogram({ Amount: 100, CardCryptogramPacket, IpAddress });
- * const sub = await cp.subscriptions.create({ ... });
+ * const tx = await cp.payments.chargeCryptogram(
+ *   { Amount: 100, CardCryptogramPacket, IpAddress },
+ *   { idempotencyKey: "order-42" },
+ * );
  * ```
  */
 export class CloudPaymentsClient {
@@ -27,12 +29,9 @@ export class CloudPaymentsClient {
 	readonly settings: SettingsModule;
 
 	constructor(opts: CloudPaymentsClientOptions) {
-		const credentials: CloudPaymentsCredentials = {
-			publicId: opts.publicId,
-			apiSecret: opts.apiSecret,
-		};
-		const { publicId: _pid, apiSecret: _sec, ...rest } = opts;
-		this.http = new CloudPaymentsHttpClient({ credentials, ...rest });
+		const { publicId, apiSecret, ...httpOptions } = opts;
+		const credentials: CloudPaymentsCredentials = { publicId, apiSecret };
+		this.http = new CloudPaymentsHttpClient({ credentials, ...httpOptions });
 		this.payments = new PaymentsModule(this.http);
 		this.subscriptions = new SubscriptionsModule(this.http);
 		this.orders = new OrdersModule(this.http);

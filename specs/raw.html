@@ -565,6 +565,29 @@
               </ul>
           </li>
           <li>
+            <a href="#tsifrovoy-rubl" class="toc-h1 toc-link" data-title="Цифровой рубль">Цифровой рубль</a>
+              <ul class="toc-list-h2">
+                  <li>
+                    <a href="#priem-tsifrovyh-rubley-s-1-sentyabrya-2026-goda" class="toc-h2 toc-link" data-title="Прием цифровых рублей с 1 сентября 2026 года">Прием цифровых рублей с 1 сентября 2026 года</a>
+                  </li>
+                  <li>
+                    <a href="#na-kogo-rasprostranyayutsya-trebovaniya" class="toc-h2 toc-link" data-title="На кого распространяются требования">На кого распространяются требования</a>
+                  </li>
+                  <li>
+                    <a href="#kak-budut-rasshiryatsya-trebovaniya" class="toc-h2 toc-link" data-title="Как будут расширяться требования">Как будут расширяться требования</a>
+                  </li>
+                  <li>
+                    <a href="#na-kogo-trebovaniya-ne-rasprostranyayutsya" class="toc-h2 toc-link" data-title="На кого требования не распространяются">На кого требования не распространяются</a>
+                  </li>
+                  <li>
+                    <a href="#priem-tsifrovyh-rubley-v-cloudpayments" class="toc-h2 toc-link" data-title="Прием цифровых рублей в CloudPayments">Прием цифровых рублей в CloudPayments</a>
+                  </li>
+                  <li>
+                    <a href="#kak-podklyuchit" class="toc-h2 toc-link" data-title="Как подключить">Как подключить</a>
+                  </li>
+              </ul>
+          </li>
+          <li>
             <a href="#sberpay" class="toc-h1 toc-link" data-title="SberPay">SberPay</a>
               <ul class="toc-list-h2">
                   <li>
@@ -4375,7 +4398,7 @@ https://api.cloudpayments.ru/payments/list</p>
 </thead><tbody>
 <tr>
 <td>Date</td>
-<td>Date</td>
+<td>String</td>
 <td>Обязательный</td>
 <td>Дата создания операций</td>
 </tr>
@@ -7845,6 +7868,33 @@ URL-адресом для перенаправления клиента.</p>
 <li>Шаблон ссылки: <code>https://online.vtb.ru/i/paymentSbp/{QRC_ID}{QUERY_STRING}</code></li>
 <li>Результат: <code>https://online.vtb.ru/i/paymentSbp/AD1000XXXXX1000?type=02&amp;bank=100000000004&amp;sum=1299900&amp;cur=RUB&amp;crc=8DA8</code></li>
 </ol>
+<h1 id='tsifrovoy-rubl'>Цифровой рубль</h1>
+<p><img src="images/digitalruble-42849866.jpg" alt="digital-ruble" /></p>
+<h2 id='priem-tsifrovyh-rubley-s-1-sentyabrya-2026-goda'>Прием цифровых рублей с 1 сентября 2026 года</h2>
+<p>Цифровой рубль — цифровая форма российской национальной валюты, которую выпускает Банк России. Он равен наличному рублю и используется для платежей через платформу Банка России.</p>
+<h2 id='na-kogo-rasprostranyayutsya-trebovaniya'>На кого распространяются требования</h2>
+<p>С 1 сентября 2026 года принимать цифровые рубли должны будут продавцы и исполнители, которые одновременно:
+- Получили за предыдущий год выручку более 120 млн рублей
+- Работают с банком, признанным значимым на рынке платежных услуг
+- Принимают оплату от физических лиц</p>
+<h2 id='kak-budut-rasshiryatsya-trebovaniya'>Как будут расширяться требования</h2>
+<p>С 1 сентября 2027 года требования распространятся на компании с выручкой более 30 млн рублей, а с 1 сентября 2028 года — на остальных продавцов с выручкой от 20 млн рублей.</p>
+<h2 id='na-kogo-trebovaniya-ne-rasprostranyayutsya'>На кого требования не распространяются</h2>
+<p>Компании с совокупной годовой выручкой менее 20 млн рублей не обязаны принимать цифровые рубли.</p>
+
+<p>Требование также не распространяется:
+- На отдельные торговые точки с выручкой менее 5 млн рублей в год, даже если совокупная выручка всей компании превышает 20 млн рублей
+- На точки продаж без доступа к интернету</p>
+<h2 id='priem-tsifrovyh-rubley-v-cloudpayments'>Прием цифровых рублей в CloudPayments</h2>
+<p>CloudPayments планирует запустить прием разовых платежей в цифровых рублях с 1 сентября 2026 года. Операции будут отображаться в Личном кабинете и включаться в реестры и отчетность.</p>
+
+<p>До конца 2026 года комиссия за прием платежей в цифровых рублях составит 0%. Регулярные платежи и сохранение счета для повторных оплат на старте поддерживаться не будут.</p>
+<h2 id='kak-podklyuchit'>Как подключить</h2>
+<p>Если вы уже принимаете платежи через CloudPayments, обратитесь к своему менеджеру или напишите в чат поддержки в Личном кабинете.</p>
+
+<p>Если вы еще не работаете с CloudPayments, оставьте <a href="https://cloudpayments.ru/#section-request">заявку на подключение</a>.</p>
+
+<p>Документацию по интеграции мы предоставим действующим клиентам по запросу, а новым — после подключения.</p>
 <h1 id='sberpay'>SberPay</h1>
 <p><img src="images/sberpay_cloud-fbaf8c5d.png" alt="sberpay_cloud" /></p>
 

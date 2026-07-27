@@ -1,12 +1,13 @@
 # @onreza/cloudpayments-sdk
 
-Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru). Работает в Node 18+, Bun, Deno, Cloudflare Workers (WebCrypto + fetch).
+Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru). Требует Node.js 24+; package artifact проверяется на минимальном и актуальном Node 24, unit-контракты — в Bun. Транспорт использует стандартные `fetch` и WebCrypto API.
+Публикуется один ESM artifact; `require()` поддержан встроенным в Node 24 механизмом `require(esm)`.
 
 - ✅ 1:1 с документацией CP — все 25+ методов, 7 типов webhook-уведомлений, 10 справочников
 - ✅ Строгая типизация запросов и ответов: `Transaction`, `Subscription`, `Order`, `TokenRecord`, `ThreeDsChallenge`
 - ✅ Union-типы из справочников: `Currency`, `ReasonCode`, `TransactionStatus`, `CultureName`, …
 - ✅ Кроссрантайм WebCrypto для HMAC верификации webhook'ов
-- ✅ Retry на 5xx/429/network с экспоненциальным backoff + full jitter
+- ✅ Безопасный retry: read-only операции и mutation с `X-Request-ID`
 - ✅ Идемпотентность через `X-Request-ID`
 - ✅ Автоматическое распознавание 3-D Secure challenge → `CloudPayments3DsRequiredError`
 
@@ -41,14 +42,17 @@ import {
 } from "@onreza/cloudpayments-sdk";
 
 try {
-  const tx = await cp.payments.chargeCryptogram({
-    Amount: 100,
-    Currency: "RUB",
-    IpAddress: req.ip,
-    CardCryptogramPacket: req.body.cryptogram, // от Checkout.js на фронте
-    AccountId: "user_123",
-    Description: "Заказ #42",
-  });
+  const tx = await cp.payments.chargeCryptogram(
+    {
+      Amount: 100,
+      Currency: "RUB",
+      IpAddress: req.ip,
+      CardCryptogramPacket: req.body.cryptogram, // от Checkout.js на фронте
+      AccountId: "user_123",
+      Description: "Заказ #42",
+    },
+    { idempotencyKey: "payment-order-42" },
+  );
   // tx.Status === "Completed", tx.TransactionId, tx.Token, …
 } catch (err) {
   if (err instanceof CloudPayments3DsRequiredError) {
@@ -67,10 +71,13 @@ try {
 После того как плательщик вернулся с TermUrl с `PaRes`:
 
 ```ts
-const tx = await cp.payments.post3ds({
-  TransactionId: Number(req.body.MD),
-  PaRes: req.body.PaRes,
-});
+const tx = await cp.payments.post3ds(
+  {
+    TransactionId: Number(req.body.MD),
+    PaRes: req.body.PaRes,
+  },
+  { idempotencyKey: `post3ds-${req.body.MD}` },
+);
 ```
 
 ### 4. Webhook handler
@@ -85,6 +92,7 @@ app.post("/cp-webhook/check", async (req, res) => {
     const payload = await verifyCheckWebhook({
       rawBody: req.rawBody, // сырое тело — НЕ parsed JSON
       signature: req.headers["content-hmac"],
+      signatureKind: "content-hmac",
       apiSecret: process.env.CP_API_SECRET!,
       contentType: "application/json",
     });
@@ -105,41 +113,50 @@ app.post("/cp-webhook/check", async (req, res) => {
 
 ```ts
 // 1. Сначала сделать charge с SaveCard=true, получить Token
-const initial = await cp.payments.chargeCryptogram({
-  Amount: 100,
-  Currency: "RUB",
-  IpAddress: req.ip,
-  CardCryptogramPacket: req.body.cryptogram,
-  AccountId: "user_123",
-  SaveCard: true,
-});
+const initial = await cp.payments.chargeCryptogram(
+  {
+    Amount: 100,
+    Currency: "RUB",
+    IpAddress: req.ip,
+    CardCryptogramPacket: req.body.cryptogram,
+    AccountId: "user_123",
+    SaveCard: true,
+  },
+  { idempotencyKey: "initial-user-123" },
+);
 
 // 2. Создать подписку
-const sub = await cp.subscriptions.create({
-  Token: initial.Token!,
-  AccountId: "user_123",
-  Description: "Месячная подписка Pro",
-  Email: "user@example.com",
-  Amount: 499,
-  Currency: "RUB",
-  RequireConfirmation: false,
-  StartDate: new Date().toISOString(),
-  Interval: "Month",
-  Period: 1,
-});
+const sub = await cp.subscriptions.create(
+  {
+    Token: initial.Token!,
+    AccountId: "user_123",
+    Description: "Месячная подписка Pro",
+    Email: "user@example.com",
+    Amount: 499,
+    Currency: "RUB",
+    RequireConfirmation: false,
+    StartDate: new Date().toISOString(),
+    Interval: "Month",
+    Period: 1,
+  },
+  { idempotencyKey: "subscription-user-123" },
+);
 ```
 
 ### 6. Разовое списание по сохранённому токену
 
 ```ts
-const tx = await cp.payments.chargeToken({
-  Amount: 499,
-  Currency: "RUB",
-  AccountId: "user_123",
-  Token: savedToken,
-  TrInitiatorCode: 0, // 0 — инициирован ТСП, 1 — пользователем
-  PaymentScheduled: 0, // 0 — без расписания
-});
+const tx = await cp.payments.chargeToken(
+  {
+    Amount: 499,
+    Currency: "RUB",
+    AccountId: "user_123",
+    Token: savedToken,
+    TrInitiatorCode: 0, // 0 — инициирован ТСП, 1 — пользователем
+    PaymentScheduled: 0, // 0 — без расписания
+  },
+  { idempotencyKey: "renewal-subscription-42-period-7" },
+);
 ```
 
 ## Модули клиента
@@ -155,7 +172,8 @@ const tx = await cp.payments.chargeToken({
 
 | Класс | Когда |
 |---|---|
-| `CloudPaymentsNetworkError` | DNS, connection, timeout, abort |
+| `CloudPaymentsNetworkError` | DNS, connection или timeout для read/idempotent запроса |
+| `CloudPaymentsUnknownOutcomeError` | Mutation без idempotency key получила неоднозначный network/5xx/response outcome; перед повтором нужна сверка |
 | `CloudPaymentsHttpError` | HTTP non-2xx (до разбора тела) |
 | `CloudPaymentsAuthError` | 401 — неверный publicId/apiSecret |
 | `CloudPaymentsRateLimitError` | 429 — превышен лимит CP (5/30 concurrent) |
@@ -202,7 +220,33 @@ const cp = new CloudPaymentsClient({
 await cp.payments.get(body, { retry: false });
 ```
 
-### Кастомный fetch (Cloudflare Workers, мок-тесты)
+Mutation без `idempotencyKey` никогда не повторяется автоматически. При сетевом
+обрыве, transient `5xx` или повреждённом успешном ответе SDK возвращает
+`CloudPaymentsUnknownOutcomeError`: сначала сверяйте транзакцию через
+`payments.get`/реестр, затем принимайте решение о новой операции.
+
+### Региональный API
+
+```ts
+import { CloudPaymentsClient, CP_BASE_URL_KZ } from "@onreza/cloudpayments-sdk";
+
+const cp = new CloudPaymentsClient({
+  publicId,
+  apiSecret,
+  baseUrl: CP_BASE_URL_KZ,
+});
+```
+
+Абсолютный URL другого origin отклоняется, чтобы Basic credentials нельзя было
+случайно отправить внешнему сервису. HTTP redirects также отклоняются.
+
+### Telemetry
+
+Hooks получают URL, attempt, status и безопасные заголовки. `Authorization` и
+request body не передаются. Ошибка hook не влияет на платёж; её можно получить
+через `onHookError`.
+
+### Кастомный fetch
 
 ```ts
 const cp = new CloudPaymentsClient({
@@ -218,6 +262,8 @@ const ctrl = new AbortController();
 const promise = cp.payments.listByDay({ Date: "2026-04-22" }, { signal: ctrl.signal });
 setTimeout(() => ctrl.abort(), 5000);
 ```
+
+Причина пользовательского abort пробрасывается без подмены на SDK-ошибку.
 
 ## Документация
 

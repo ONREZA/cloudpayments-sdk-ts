@@ -17,11 +17,7 @@
  * Для остальных типов CP ответ не проверяет, но отдавать что-то валидное
  * обязательно, чтобы CP не пометил уведомление как неуспешное.
  */
-import {
-	type VerifyWebhookInput,
-	verifyWebhook,
-	WebhookVerificationError,
-} from "../../../src/webhooks/index.js";
+import { verifyWebhook, WebhookVerificationError } from "../../../src/webhooks/index.js";
 
 type BunServerHandle = ReturnType<typeof Bun.serve>;
 
@@ -87,10 +83,12 @@ export class WebhookListener {
 		const url = new URL(req.url);
 		const type = url.pathname.replace(/^\/+/, "").split("/")[0]?.toLowerCase() || "unknown";
 		const rawBody = await req.text();
-		const signature = req.headers.get("content-hmac") ?? req.headers.get("x-content-hmac") ?? null;
+		const contentHmac = req.headers.get("content-hmac");
+		const signature = contentHmac ?? req.headers.get("x-content-hmac");
+		const signatureKind = contentHmac ? "content-hmac" : "x-content-hmac";
 
 		const rawContentType = (req.headers.get("content-type") ?? "").toLowerCase();
-		const contentType: VerifyWebhookInput["contentType"] = rawContentType.includes("json")
+		const contentType: ReceivedWebhook["contentType"] = rawContentType.includes("json")
 			? "application/json"
 			: "application/x-www-form-urlencoded";
 
@@ -102,6 +100,7 @@ export class WebhookListener {
 			payload = await verifyWebhook({
 				rawBody,
 				signature,
+				signatureKind,
 				apiSecret: this.opts.apiSecret,
 				contentType,
 			});

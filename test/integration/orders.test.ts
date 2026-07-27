@@ -9,20 +9,25 @@ import { HAS_CREDS, makeTestClient } from "./setup.js";
 describe.skipIf(!HAS_CREDS)("integration: orders", () => {
 	test("create → returns Url, then cancel succeeds", async () => {
 		const cp = makeTestClient();
-		const order = await cp.orders.create({
-			Amount: 1,
-			Currency: "RUB",
-			Description: "@onreza/cloudpayments-sdk integration test",
-			// Email обязателен для /orders/create
-			Email: "sdk-integration-test@onreza.local",
-			RequireConfirmation: false,
-		});
-		expect(typeof order.Id).toBe("string");
-		expect(order.Url).toMatch(/^https:\/\/orders\.cloudpayments\.ru\//);
-		expect(order.Amount).toBe(1);
-		expect(order.Currency).toBe("RUB");
-
-		// Lifecycle: отменяем созданный заказ
-		await cp.orders.cancel({ Id: order.Id });
+		const requestId = `sdk-order-${crypto.randomUUID()}`;
+		const order = await cp.orders.create(
+			{
+				Amount: 1,
+				Currency: "RUB",
+				Description: "@onreza/cloudpayments-sdk integration test",
+				// Email обязателен для /orders/create
+				Email: "sdk-integration-test@onreza.local",
+				RequireConfirmation: false,
+			},
+			{ idempotencyKey: requestId },
+		);
+		try {
+			expect(typeof order.Id).toBe("string");
+			expect(order.Url).toMatch(/^https:\/\/orders\.cloudpayments\.ru\//);
+			expect(order.Amount).toBe(1);
+			expect(order.Currency).toBe("RUB");
+		} finally {
+			await cp.orders.cancel({ Id: order.Id }, { idempotencyKey: `${requestId}-cancel` });
+		}
 	});
 });

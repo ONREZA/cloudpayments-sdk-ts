@@ -55,7 +55,7 @@ export class PaymentsModule extends BaseModule {
 		const env = await this.http.post<{ Success: boolean; Message: string | null }>(
 			PAYMENTS_TEST_URL,
 			body,
-			opts,
+			{ ...opts, replaySafety: "safe" },
 		);
 		if (!env.Success) throw new CloudPaymentsBusinessError(env.Message ?? "", null, undefined);
 		return env.Message ?? "";
@@ -69,7 +69,8 @@ export class PaymentsModule extends BaseModule {
 		return this.exec<PaymentsChargeCryptogramRequest, Transaction>(
 			PAYMENTS_CHARGE_CRYPTOGRAM_URL,
 			body,
-			{ detect3ds: true, ...opts },
+			opts,
+			{ detect3ds: true },
 		);
 	}
 
@@ -78,7 +79,8 @@ export class PaymentsModule extends BaseModule {
 		return this.exec<PaymentsAuthCryptogramRequest, Transaction>(
 			PAYMENTS_AUTH_CRYPTOGRAM_URL,
 			body,
-			{ detect3ds: true, ...opts },
+			opts,
+			{ detect3ds: true },
 		);
 	}
 
@@ -89,17 +91,18 @@ export class PaymentsModule extends BaseModule {
 
 	/** Одностадийная оплата по сохранённому токену (рекарринг). */
 	chargeToken(body: PaymentsChargeTokenRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsChargeTokenRequest, Transaction>(PAYMENTS_CHARGE_TOKEN_URL, body, {
-			detect3ds: true,
-			...opts,
-		});
+		return this.exec<PaymentsChargeTokenRequest, Transaction>(
+			PAYMENTS_CHARGE_TOKEN_URL,
+			body,
+			opts,
+			{ detect3ds: true },
+		);
 	}
 
 	/** Двухстадийная оплата по сохранённому токену. */
 	authToken(body: PaymentsAuthTokenRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsAuthTokenRequest, Transaction>(PAYMENTS_AUTH_TOKEN_URL, body, {
+		return this.exec<PaymentsAuthTokenRequest, Transaction>(PAYMENTS_AUTH_TOKEN_URL, body, opts, {
 			detect3ds: true,
-			...opts,
 		});
 	}
 
@@ -161,7 +164,7 @@ export class PaymentsModule extends BaseModule {
 			Success: boolean;
 			Message: string | null;
 			Model?: Transaction;
-		}>(PAYMENTS_GET_URL, body, opts);
+		}>(PAYMENTS_GET_URL, body, { ...opts, replaySafety: "safe" });
 		if (env.Model && typeof env.Model === "object" && "TransactionId" in env.Model) {
 			return env.Model as Transaction;
 		}
@@ -174,7 +177,12 @@ export class PaymentsModule extends BaseModule {
 
 	/** Список транзакций за сутки. */
 	listByDay(body: PaymentsListByDayRequest, opts?: ExecOptions): Promise<Transaction[]> {
-		return this.exec<PaymentsListByDayRequest, Transaction[]>(PAYMENTS_LIST_BY_DAY_URL, body, opts);
+		return this.exec<PaymentsListByDayRequest, Transaction[]>(
+			PAYMENTS_LIST_BY_DAY_URL,
+			body,
+			opts,
+			{ replaySafety: "safe" },
+		);
 	}
 
 	/** Список транзакций за произвольный период. */
@@ -183,6 +191,7 @@ export class PaymentsModule extends BaseModule {
 			PAYMENTS_LIST_BY_PERIOD_URL,
 			body,
 			opts,
+			{ replaySafety: "safe" },
 		);
 	}
 
@@ -221,18 +230,20 @@ export class PaymentsModule extends BaseModule {
 			PAYMENTS_LIST_CLAIMS_BY_PERIOD_URL,
 			body,
 			opts,
+			{ replaySafety: "safe" },
 		);
 	}
 
 	/** Выгрузка сохранённых токенов. */
 	listTokens(
-		body: PaymentsListTokensRequest = {} as PaymentsListTokensRequest,
+		body: PaymentsListTokensRequest = { PageNumber: 1 },
 		opts?: ExecOptions,
 	): Promise<TokenRecord[]> {
 		return this.exec<PaymentsListTokensRequest, TokenRecord[]>(
 			PAYMENTS_LIST_TOKENS_URL,
 			body,
 			opts,
+			{ replaySafety: "safe" },
 		);
 	}
 }

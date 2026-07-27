@@ -13,7 +13,7 @@ import type { Payer, Receipt, CloudPaymentsMeta } from "./shared.js";
  */
 export type PaymentsTestRequest = Record<string, never>;
 
-export const PAYMENTS_TEST_URL = "https://api.cloudpayments.ru/test" as const;
+export const PAYMENTS_TEST_URL = "/test" as const;
 
 /**
  * Оплата по криптограмме
@@ -51,7 +51,7 @@ export interface PaymentsChargeCryptogramRequest {
 	SaveCard?: boolean;
 }
 
-export const PAYMENTS_CHARGE_CRYPTOGRAM_URL = "https://api.cloudpayments.ru/payments/cards/charge" as const;
+export const PAYMENTS_CHARGE_CRYPTOGRAM_URL = "/payments/cards/charge" as const;
 
 /**
  * Оплата по криптограмме
@@ -89,7 +89,7 @@ export interface PaymentsAuthCryptogramRequest {
 	SaveCard?: boolean;
 }
 
-export const PAYMENTS_AUTH_CRYPTOGRAM_URL = "https://api.cloudpayments.ru/payments/cards/auth" as const;
+export const PAYMENTS_AUTH_CRYPTOGRAM_URL = "/payments/cards/auth" as const;
 
 /**
  * Пример формы:
@@ -102,7 +102,7 @@ export interface PaymentsPost3dsRequest {
 	PaRes: string;
 }
 
-export const PAYMENTS_POST3DS_URL = "https://api.cloudpayments.ru/payments/cards/post3ds" as const;
+export const PAYMENTS_POST3DS_URL = "/payments/cards/post3ds" as const;
 
 /**
  * Оплата по токену (рекарринг)
@@ -136,7 +136,7 @@ export interface PaymentsChargeTokenRequest {
 	JsonData?: Record<string, unknown>;
 }
 
-export const PAYMENTS_CHARGE_TOKEN_URL = "https://api.cloudpayments.ru/payments/tokens/charge" as const;
+export const PAYMENTS_CHARGE_TOKEN_URL = "/payments/tokens/charge" as const;
 
 /**
  * Оплата по токену (рекарринг)
@@ -170,7 +170,7 @@ export interface PaymentsAuthTokenRequest {
 	JsonData?: Record<string, unknown>;
 }
 
-export const PAYMENTS_AUTH_TOKEN_URL = "https://api.cloudpayments.ru/payments/tokens/auth" as const;
+export const PAYMENTS_AUTH_TOKEN_URL = "/payments/tokens/auth" as const;
 
 /**
  * Подтверждение оплаты
@@ -186,7 +186,7 @@ export interface PaymentsConfirmRequest {
 	JsonData?: Record<string, unknown>;
 }
 
-export const PAYMENTS_CONFIRM_URL = "https://api.cloudpayments.ru/payments/confirm" as const;
+export const PAYMENTS_CONFIRM_URL = "/payments/confirm" as const;
 
 /**
  * Отмена оплаты
@@ -198,7 +198,7 @@ export interface PaymentsVoidRequest {
 	TransactionId: number;
 }
 
-export const PAYMENTS_VOID_URL = "https://api.cloudpayments.ru/payments/void" as const;
+export const PAYMENTS_VOID_URL = "/payments/void" as const;
 
 /**
  * Возврат денег
@@ -214,7 +214,7 @@ export interface PaymentsRefundRequest {
 	JsonData?: Record<string, unknown>;
 }
 
-export const PAYMENTS_REFUND_URL = "https://api.cloudpayments.ru/payments/refund" as const;
+export const PAYMENTS_REFUND_URL = "/payments/refund" as const;
 
 /**
  * Выплата по криптограмме
@@ -246,7 +246,7 @@ export interface PaymentsPayoutCryptogramRequest {
 	Receiver?: Record<string, unknown>;
 }
 
-export const PAYMENTS_PAYOUT_CRYPTOGRAM_URL = "https://api.cloudpayments.ru/payments/cards/topup" as const;
+export const PAYMENTS_PAYOUT_CRYPTOGRAM_URL = "/payments/cards/topup" as const;
 
 /**
  * Выплата по токену
@@ -270,7 +270,7 @@ export interface PaymentsPayoutTokenRequest {
 	Receiver?: Record<string, unknown>;
 }
 
-export const PAYMENTS_PAYOUT_TOKEN_URL = "https://api.cloudpayments.ru/payments/token/topup" as const;
+export const PAYMENTS_PAYOUT_TOKEN_URL = "/payments/token/topup" as const;
 
 /**
  * Выплата по СБП
@@ -302,7 +302,7 @@ export interface PaymentsPayoutSbpRequest {
 	"Receiver.Phone": string;
 }
 
-export const PAYMENTS_PAYOUT_SBP_URL = "https://api.cloudpayments.ru/payments/alt/topup" as const;
+export const PAYMENTS_PAYOUT_SBP_URL = "/payments/alt/topup" as const;
 
 /**
  * Просмотр транзакции
@@ -314,7 +314,7 @@ export interface PaymentsGetRequest {
 	TransactionId: number;
 }
 
-export const PAYMENTS_GET_URL = "https://api.cloudpayments.ru/payments/get" as const;
+export const PAYMENTS_GET_URL = "/payments/get" as const;
 
 /**
  * Выгрузка списка транзакций
@@ -328,7 +328,7 @@ export interface PaymentsListByDayRequest {
 	TimeZone?: string;
 }
 
-export const PAYMENTS_LIST_BY_DAY_URL = "https://api.cloudpayments.ru/payments/list" as const;
+export const PAYMENTS_LIST_BY_DAY_URL = "/payments/list" as const;
 
 /**
  * Выгрузка списка транзакций за произвольный период
@@ -348,7 +348,7 @@ export interface PaymentsListByPeriodRequest {
 	Statuses?: string;
 }
 
-export const PAYMENTS_LIST_BY_PERIOD_URL = "https://api.cloudpayments.ru/v2/payments/list" as const;
+export const PAYMENTS_LIST_BY_PERIOD_URL = "/v2/payments/list" as const;
 
 /**
  * Выгрузка списка претензий за произвольный период
@@ -364,7 +364,7 @@ export interface PaymentsListClaimsByPeriodRequest {
 	PageNumber: number;
 }
 
-export const PAYMENTS_LIST_CLAIMS_BY_PERIOD_URL = "https://api.cloudpayments.ru/chargebacks/list" as const;
+export const PAYMENTS_LIST_CLAIMS_BY_PERIOD_URL = "/chargebacks/list" as const;
 
 /**
  * Выгрузка токенов
@@ -376,7 +376,7 @@ export interface PaymentsListTokensRequest {
 	PageNumber: number;
 }
 
-export const PAYMENTS_LIST_TOKENS_URL = "https://api.cloudpayments.ru/payments/tokens/list" as const;
+export const PAYMENTS_LIST_TOKENS_URL = "/payments/tokens/list" as const;
 
 /**
  * Создание подписки на рекуррентные платежи
@@ -410,7 +410,7 @@ export interface SubscriptionsCreateRequest {
 	CustomerReceipt?: Record<string, unknown>;
 }
 
-export const SUBSCRIPTIONS_CREATE_URL = "https://api.cloudpayments.ru/subscriptions/create" as const;
+export const SUBSCRIPTIONS_CREATE_URL = "/subscriptions/create" as const;
 
 /**
  * Запрос информации о подписке
@@ -422,7 +422,7 @@ export interface SubscriptionsGetRequest {
 	Id: string;
 }
 
-export const SUBSCRIPTIONS_GET_URL = "https://api.cloudpayments.ru/subscriptions/get" as const;
+export const SUBSCRIPTIONS_GET_URL = "/subscriptions/get" as const;
 
 /**
  * Поиск подписок
@@ -434,7 +434,7 @@ export interface SubscriptionsFindByAccountRequest {
 	accountId: string;
 }
 
-export const SUBSCRIPTIONS_FIND_BY_ACCOUNT_URL = "https://api.cloudpayments.ru/subscriptions/find" as const;
+export const SUBSCRIPTIONS_FIND_BY_ACCOUNT_URL = "/subscriptions/find" as const;
 
 /**
  * Изменение подписки на рекуррентные платежи
@@ -466,7 +466,7 @@ export interface SubscriptionsUpdateRequest {
 	CultureName?: CultureName;
 }
 
-export const SUBSCRIPTIONS_UPDATE_URL = "https://api.cloudpayments.ru/subscriptions/update" as const;
+export const SUBSCRIPTIONS_UPDATE_URL = "/subscriptions/update" as const;
 
 /**
  * Отмена подписки на рекуррентные платежи
@@ -478,7 +478,7 @@ export interface SubscriptionsCancelRequest {
 	Id: string;
 }
 
-export const SUBSCRIPTIONS_CANCEL_URL = "https://api.cloudpayments.ru/subscriptions/cancel" as const;
+export const SUBSCRIPTIONS_CANCEL_URL = "/subscriptions/cancel" as const;
 
 /**
  * Создание счета для отправки по почте
@@ -522,7 +522,7 @@ export interface OrdersCreateRequest {
 	JsonData?: Record<string, unknown>;
 }
 
-export const ORDERS_CREATE_URL = "https://api.cloudpayments.ru/orders/create" as const;
+export const ORDERS_CREATE_URL = "/orders/create" as const;
 
 /**
  * Отмена созданного счета
@@ -534,7 +534,7 @@ export interface OrdersCancelRequest {
 	Id: string;
 }
 
-export const ORDERS_CANCEL_URL = "https://api.cloudpayments.ru/orders/cancel" as const;
+export const ORDERS_CANCEL_URL = "/orders/cancel" as const;
 
 /**
  * Просмотр настроек уведомлений
@@ -546,7 +546,7 @@ export interface SettingsGetNotificationRequest {
 	Type: string;
 }
 
-export const SETTINGS_GET_NOTIFICATION_URL = "https://api.cloudpayments.ru/site/notifications/{Type}/get" as const;
+export const SETTINGS_GET_NOTIFICATION_URL = "/site/notifications/{Type}/get" as const;
 
 /**
  * Изменение настроек уведомлений
@@ -568,42 +568,42 @@ export interface SettingsUpdateNotificationRequest {
 	Format?: string;
 }
 
-export const SETTINGS_UPDATE_NOTIFICATION_URL = "https://api.cloudpayments.ru/site/notifications/{Type}/update" as const;
+export const SETTINGS_UPDATE_NOTIFICATION_URL = "/site/notifications/{Type}/update" as const;
 
 /** Реестр всех API-эндпоинтов, сгенерирован из IR. */
 export const ENDPOINTS = {
 	payments: {
-		test: { url: "https://api.cloudpayments.ru/test", method: "POST" as const },
-		chargeCryptogram: { url: "https://api.cloudpayments.ru/payments/cards/charge", method: "POST" as const },
-		authCryptogram: { url: "https://api.cloudpayments.ru/payments/cards/auth", method: "POST" as const },
-		post3ds: { url: "https://api.cloudpayments.ru/payments/cards/post3ds", method: "POST" as const },
-		chargeToken: { url: "https://api.cloudpayments.ru/payments/tokens/charge", method: "POST" as const },
-		authToken: { url: "https://api.cloudpayments.ru/payments/tokens/auth", method: "POST" as const },
-		confirm: { url: "https://api.cloudpayments.ru/payments/confirm", method: "POST" as const },
-		void: { url: "https://api.cloudpayments.ru/payments/void", method: "POST" as const },
-		refund: { url: "https://api.cloudpayments.ru/payments/refund", method: "POST" as const },
-		payoutCryptogram: { url: "https://api.cloudpayments.ru/payments/cards/topup", method: "POST" as const },
-		payoutToken: { url: "https://api.cloudpayments.ru/payments/token/topup", method: "POST" as const },
-		payoutSbp: { url: "https://api.cloudpayments.ru/payments/alt/topup", method: "POST" as const },
-		get: { url: "https://api.cloudpayments.ru/payments/get", method: "POST" as const },
-		listByDay: { url: "https://api.cloudpayments.ru/payments/list", method: "POST" as const },
-		listByPeriod: { url: "https://api.cloudpayments.ru/v2/payments/list", method: "POST" as const },
-		listClaimsByPeriod: { url: "https://api.cloudpayments.ru/chargebacks/list", method: "POST" as const },
-		listTokens: { url: "https://api.cloudpayments.ru/payments/tokens/list", method: "POST" as const },
+		test: { url: "/test", method: "POST" as const },
+		chargeCryptogram: { url: "/payments/cards/charge", method: "POST" as const },
+		authCryptogram: { url: "/payments/cards/auth", method: "POST" as const },
+		post3ds: { url: "/payments/cards/post3ds", method: "POST" as const },
+		chargeToken: { url: "/payments/tokens/charge", method: "POST" as const },
+		authToken: { url: "/payments/tokens/auth", method: "POST" as const },
+		confirm: { url: "/payments/confirm", method: "POST" as const },
+		void: { url: "/payments/void", method: "POST" as const },
+		refund: { url: "/payments/refund", method: "POST" as const },
+		payoutCryptogram: { url: "/payments/cards/topup", method: "POST" as const },
+		payoutToken: { url: "/payments/token/topup", method: "POST" as const },
+		payoutSbp: { url: "/payments/alt/topup", method: "POST" as const },
+		get: { url: "/payments/get", method: "POST" as const },
+		listByDay: { url: "/payments/list", method: "POST" as const },
+		listByPeriod: { url: "/v2/payments/list", method: "POST" as const },
+		listClaimsByPeriod: { url: "/chargebacks/list", method: "POST" as const },
+		listTokens: { url: "/payments/tokens/list", method: "POST" as const },
 	},
 	subscriptions: {
-		create: { url: "https://api.cloudpayments.ru/subscriptions/create", method: "POST" as const },
-		get: { url: "https://api.cloudpayments.ru/subscriptions/get", method: "POST" as const },
-		findByAccount: { url: "https://api.cloudpayments.ru/subscriptions/find", method: "POST" as const },
-		update: { url: "https://api.cloudpayments.ru/subscriptions/update", method: "POST" as const },
-		cancel: { url: "https://api.cloudpayments.ru/subscriptions/cancel", method: "POST" as const },
+		create: { url: "/subscriptions/create", method: "POST" as const },
+		get: { url: "/subscriptions/get", method: "POST" as const },
+		findByAccount: { url: "/subscriptions/find", method: "POST" as const },
+		update: { url: "/subscriptions/update", method: "POST" as const },
+		cancel: { url: "/subscriptions/cancel", method: "POST" as const },
 	},
 	orders: {
-		create: { url: "https://api.cloudpayments.ru/orders/create", method: "POST" as const },
-		cancel: { url: "https://api.cloudpayments.ru/orders/cancel", method: "POST" as const },
+		create: { url: "/orders/create", method: "POST" as const },
+		cancel: { url: "/orders/cancel", method: "POST" as const },
 	},
 	settings: {
-		getNotification: { url: "https://api.cloudpayments.ru/site/notifications/{Type}/get", method: "POST" as const },
-		updateNotification: { url: "https://api.cloudpayments.ru/site/notifications/{Type}/update", method: "POST" as const },
+		getNotification: { url: "/site/notifications/{Type}/get", method: "POST" as const },
+		updateNotification: { url: "/site/notifications/{Type}/update", method: "POST" as const },
 	},
 } as const;

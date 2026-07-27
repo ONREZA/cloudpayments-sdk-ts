@@ -24,6 +24,7 @@ import type {
 	RecurrentNotificationPayload,
 	RefundNotificationPayload,
 } from "../_generated/webhook-payloads.js";
+import { WEBHOOK_FIELD_KINDS } from "../_generated/webhook-payloads.js";
 
 export type {
 	AnyWebhookPayload,
@@ -43,6 +44,8 @@ export type WebhookVerificationReason =
 	| "bad_content_type"
 	| "crypto_unavailable";
 
+export type WebhookSignatureKind = "content-hmac" | "x-content-hmac";
+
 export class WebhookVerificationError extends Error {
 	constructor(
 		message: string,
@@ -58,13 +61,18 @@ export interface VerifyWebhookInput {
 	rawBody: string | Uint8Array;
 	/** Значение заголовка Content-HMAC (или X-Content-HMAC), base64. */
 	signature: string | null | undefined;
+	/**
+	 * Какой заголовок передан. Content-HMAC подписывает encoded body,
+	 * X-Content-HMAC — URL-decoded body. По умолчанию Content-HMAC.
+	 */
+	signatureKind?: WebhookSignatureKind;
 	/** API Secret из ЛК CloudPayments (НЕ Public ID). */
 	apiSecret: string;
 	/**
 	 * Content-Type запроса. По умолчанию `application/x-www-form-urlencoded`
 	 * — формат, который CP использует out-of-the-box.
 	 */
-	contentType?: "application/x-www-form-urlencoded" | "application/json";
+	contentType?: string;
 }
 
 /**
@@ -79,13 +87,17 @@ export async function verifyWebhook<T = AnyWebhookPayload>(input: VerifyWebhookI
 		throw new WebhookVerificationError("Missing signature header", "missing_signature");
 	}
 	const bodyBytes = typeof input.rawBody === "string" ? encodeUtf8(input.rawBody) : input.rawBody;
-	const expected = await hmacSha256Base64(input.apiSecret, bodyBytes);
+	const bodyStr =
+		typeof input.rawBody === "string" ? input.rawBody : new TextDecoder("utf-8").decode(bodyBytes);
+	const contentType = normalizeContentType(input.contentType);
+	const signatureBytes =
+		input.signatureKind === "x-content-hmac" && contentType === "application/x-www-form-urlencoded"
+			? encodeUtf8(decodeFormForSignature(bodyStr))
+			: bodyBytes;
+	const expected = await hmacSha256Base64(input.apiSecret, signatureBytes);
 	if (!timingSafeEqual(expected, input.signature)) {
 		throw new WebhookVerificationError("Signature mismatch", "signature_mismatch");
 	}
-	const contentType = input.contentType ?? "application/x-www-form-urlencoded";
-	const bodyStr =
-		typeof input.rawBody === "string" ? input.rawBody : new TextDecoder("utf-8").decode(bodyBytes);
 	if (contentType === "application/json") {
 		try {
 			return JSON.parse(bodyStr) as T;
@@ -149,12 +161,9 @@ async function hmacSha256Base64(secret: string, data: Uint8Array): Promise<strin
 }
 
 function base64Encode(bytes: Uint8Array): string {
-	if (typeof btoa === "function") {
-		let binary = "";
-		for (const b of bytes) binary += String.fromCharCode(b);
-		return btoa(binary);
-	}
-	return Buffer.from(bytes).toString("base64");
+	let binary = "";
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary);
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -168,7 +177,7 @@ function parseFormUrlEncoded(body: string): Record<string, unknown> {
 	const params = new URLSearchParams(body);
 	const result: Record<string, unknown> = {};
 	for (const [key, rawVal] of params) {
-		const val = coerceFormValue(rawVal);
+		const val = parseFormValue(key, rawVal);
 		if (key in result) {
 			const existing = result[key];
 			if (Array.isArray(existing)) existing.push(val);
@@ -180,21 +189,55 @@ function parseFormUrlEncoded(body: string): Record<string, unknown> {
 	return result;
 }
 
-function coerceFormValue(v: string): unknown {
-	// CP webhook-payload формата form-urlencoded приходит со всеми числами/булеанами
-	// как строками. Конвертируем только явные числа, чтобы иметь консистентные типы
-	// совпадающие с сгенерированными *NotificationPayload (где Amount — number,
-	// TestMode — 0|1, и т.п.)
-	if (v === "") return "";
-	if (v === "true") return true;
-	if (v === "false") return false;
-	if (/^-?\d+$/.test(v)) {
-		const n = Number(v);
-		return Number.isSafeInteger(n) ? n : v;
+function parseFormValue(key: string, value: string): unknown {
+	const fieldKind = (WEBHOOK_FIELD_KINDS as Partial<Record<string, "number" | "boolean" | "json">>)[
+		key
+	];
+	if (fieldKind === "number") {
+		if (value.trim() === "") {
+			throw new WebhookVerificationError(`Field ${key} is not a valid number`, "bad_body");
+		}
+		const number = Number(value);
+		if (!Number.isFinite(number)) {
+			throw new WebhookVerificationError(`Field ${key} is not a valid number`, "bad_body");
+		}
+		return number;
 	}
-	if (/^-?\d+\.\d+$/.test(v)) {
-		const n = Number.parseFloat(v);
-		return Number.isFinite(n) ? n : v;
+	if (fieldKind === "boolean") {
+		if (value === "true" || value === "1") return true;
+		if (value === "false" || value === "0") return false;
+		throw new WebhookVerificationError(`Field ${key} is not a valid boolean`, "bad_body");
 	}
-	return v;
+	if (fieldKind === "json" && value !== "") {
+		try {
+			return JSON.parse(value) as unknown;
+		} catch {
+			throw new WebhookVerificationError(`Field ${key} is not valid JSON`, "bad_body");
+		}
+	}
+	return value;
+}
+
+function normalizeContentType(
+	contentType?: string,
+): "application/x-www-form-urlencoded" | "application/json" {
+	const normalized = (contentType ?? "application/x-www-form-urlencoded")
+		.split(";", 1)[0]
+		?.trim()
+		.toLowerCase();
+	if (normalized === "application/json" || normalized === "application/x-www-form-urlencoded") {
+		return normalized;
+	}
+	throw new WebhookVerificationError(
+		`Unsupported Content-Type: ${contentType}`,
+		"bad_content_type",
+	);
+}
+
+function decodeFormForSignature(body: string): string {
+	try {
+		return decodeURIComponent(body.replace(/\+/g, " "));
+	} catch {
+		throw new WebhookVerificationError("Body is not valid URL-encoded data", "bad_body");
+	}
 }

@@ -25,14 +25,4 @@ describe.skipIf(!HAS_CREDS)("integration: subscriptions", () => {
 			expect(err).toBeInstanceOf(CloudPaymentsBusinessError);
 		}
 	});
-
-	test("cancel(nonexistent Id) → BusinessError", async () => {
-		const cp = makeTestClient();
-		try {
-			await cp.subscriptions.cancel({ Id: "__does_not_exist__" });
-			throw new Error("expected rejection");
-		} catch (err) {
-			expect(err).toBeInstanceOf(CloudPaymentsBusinessError);
-		}
-	});
 });

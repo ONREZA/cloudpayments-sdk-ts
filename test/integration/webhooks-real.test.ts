@@ -40,14 +40,17 @@ describe.skipIf(!HAS_WEBHOOK_TUNNEL)("integration: webhooks real tunnel", () => 
 		const cp = makeTestClient();
 		const invoiceId = `sdk-test-${Date.now()}`;
 
-		const order = await cp.orders.create({
-			Amount: 10,
-			Currency: "RUB",
-			Description: "@onreza/cloudpayments-sdk webhook tunnel test",
-			Email: "sdk-integration-test@onreza.local",
-			RequireConfirmation: false,
-			InvoiceId: invoiceId,
-		});
+		const order = await cp.orders.create(
+			{
+				Amount: 10,
+				Currency: "RUB",
+				Description: "@onreza/cloudpayments-sdk webhook tunnel test",
+				Email: "sdk-integration-test@onreza.local",
+				RequireConfirmation: false,
+				InvoiceId: invoiceId,
+			},
+			{ idempotencyKey: `sdk-webhook-order-${invoiceId}` },
+		);
 
 		console.log("");
 		console.log("  ┌────────────────────────────────────────────────────────────┐");

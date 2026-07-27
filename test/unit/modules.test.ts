@@ -5,6 +5,7 @@ import {
 	CloudPaymentsBusinessError,
 } from "../../src/errors/index.js";
 import { PaymentsModule } from "../../src/modules/payments.js";
+import { SettingsModule } from "../../src/modules/settings.js";
 
 function mockFetchReturning(body: unknown, status = 200): typeof fetch {
 	return (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -22,6 +23,49 @@ describe("PaymentsModule", () => {
 		const payments = new PaymentsModule(http);
 		const res = await payments.test();
 		expect(res).toBe("guid-123");
+	});
+
+	test("generated paths use baseUrl and preserve notification placeholders", async () => {
+		const urls: string[] = [];
+		const bodies: unknown[] = [];
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			baseUrl: "https://api.cp.kz",
+			retry: { maxAttempts: 1 },
+			fetch: (async (url: string | URL | Request, init?: RequestInit) => {
+				const value = url.toString();
+				urls.push(value);
+				bodies.push(JSON.parse(String(init?.body)));
+				return value.endsWith("/test")
+					? new Response(JSON.stringify({ Success: true, Message: "guid-123" }))
+					: value.endsWith("/update")
+						? new Response(JSON.stringify({ Success: true, Message: null }))
+						: new Response(
+								JSON.stringify({
+									Success: true,
+									Model: {
+										IsEnabled: true,
+										Address: "https://example.test/webhook",
+										HttpMethod: "POST",
+										Encoding: "UTF8",
+										Format: "CloudPayments",
+									},
+								}),
+							);
+			}) as typeof fetch,
+		});
+
+		await new PaymentsModule(http).test();
+		const settings = new SettingsModule(http);
+		await settings.getNotification("Pay");
+		await settings.updateNotification("Fail", { IsEnabled: false });
+
+		expect(urls).toEqual([
+			"https://api.cp.kz/test",
+			"https://api.cp.kz/site/notifications/Pay/get",
+			"https://api.cp.kz/site/notifications/Fail/update",
+		]);
+		expect(bodies).toEqual([{}, {}, { IsEnabled: false }]);
 	});
 
 	test("chargeCryptogram throws 3DsRequiredError when Success=false + AcsUrl+PaReq", async () => {

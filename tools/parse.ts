@@ -11,7 +11,6 @@ import type { AnyNode, Element } from "domhandler";
 export interface IR {
 	source: {
 		url: string;
-		parsedAt: string;
 		htmlSha256: string;
 		htmlSize: number;
 	};
@@ -591,7 +590,6 @@ async function main() {
 	const ir: IR = {
 		source: {
 			url: DOCS_URL,
-			parsedAt: new Date().toISOString(),
 			htmlSha256,
 			htmlSize: html.length,
 		},

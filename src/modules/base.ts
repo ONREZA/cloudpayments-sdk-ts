@@ -1,14 +1,12 @@
-import type { CloudPaymentsHttpClient, PostOptions } from "../core/http.js";
+import type { CloudPaymentsHttpClient, PostOptions, RequestReplaySafety } from "../core/http.js";
 import { CloudPayments3DsRequiredError, CloudPaymentsBusinessError } from "../errors/index.js";
-import type { ApiEnvelope, ThreeDsChallenge } from "../types.js";
+import type { ApiEnvelope } from "../types.js";
 
-export interface ExecOptions extends PostOptions {
-	/**
-	 * Если true — при Success=false проверим Model на форму ThreeDsChallenge
-	 * и бросим {@link CloudPayments3DsRequiredError}. По-умолчанию включено
-	 * для платёжных методов (charge/auth/chargeToken/authToken).
-	 */
+export type ExecOptions = Omit<PostOptions, "replaySafety">;
+
+interface ExecBehavior {
 	detect3ds?: boolean;
+	replaySafety?: RequestReplaySafety;
 }
 
 export abstract class BaseModule {
@@ -19,9 +17,17 @@ export abstract class BaseModule {
 	 * Если Success=false — бросить {@link CloudPaymentsBusinessError} или, при
 	 * detect3ds, {@link CloudPayments3DsRequiredError}.
 	 */
-	protected async exec<TReq, TRes>(url: string, body: TReq, opts: ExecOptions = {}): Promise<TRes> {
-		const env = await this.http.post<ApiEnvelope<TRes>>(url, body, opts);
-		return this.unwrap(env, opts.detect3ds ?? false);
+	protected async exec<TReq, TRes>(
+		url: string,
+		body: TReq,
+		opts: ExecOptions = {},
+		behavior: ExecBehavior = {},
+	): Promise<TRes> {
+		const env = await this.http.post<ApiEnvelope<TRes>>(url, body, {
+			...opts,
+			replaySafety: behavior.replaySafety ?? "requires-idempotency",
+		});
+		return this.unwrap(env, behavior.detect3ds ?? false);
 	}
 
 	/** Универсальная распаковка envelope. */
@@ -36,7 +42,7 @@ export abstract class BaseModule {
 				m.TransactionId,
 				m.PaReq,
 				m.AcsUrl,
-				m.ThreeDsCallbackId,
+				m.ThreeDsCallbackId ?? null,
 				m,
 			);
 		}
@@ -46,10 +52,24 @@ export abstract class BaseModule {
 	}
 }
 
-function is3DsChallenge(model: unknown): model is ThreeDsChallenge {
+interface ThreeDsErrorPayload {
+	TransactionId: number;
+	PaReq: string;
+	AcsUrl: string;
+	ThreeDsCallbackId?: string | null;
+}
+
+function is3DsChallenge(model: unknown): model is ThreeDsErrorPayload {
 	if (!model || typeof model !== "object") return false;
 	const m = model as Record<string, unknown>;
-	return typeof m.AcsUrl === "string" && typeof m.PaReq === "string";
+	return (
+		typeof m.TransactionId === "number" &&
+		typeof m.AcsUrl === "string" &&
+		typeof m.PaReq === "string" &&
+		(m.ThreeDsCallbackId === undefined ||
+			m.ThreeDsCallbackId === null ||
+			typeof m.ThreeDsCallbackId === "string")
+	);
 }
 
 function extractReasonCode(model: unknown): number | undefined {

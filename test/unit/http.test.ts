@@ -3,8 +3,9 @@ import { CloudPaymentsHttpClient } from "../../src/core/http.js";
 import {
 	CloudPaymentsAuthError,
 	CloudPaymentsHttpError,
-	CloudPaymentsNetworkError,
 	CloudPaymentsRateLimitError,
+	CloudPaymentsSdkError,
+	CloudPaymentsUnknownOutcomeError,
 } from "../../src/errors/index.js";
 
 function mockFetch(fn: (url: string, init: RequestInit) => Promise<Response>): typeof fetch {
@@ -34,6 +35,7 @@ describe("CloudPaymentsHttpClient.post", () => {
 		);
 		expect(res.Success).toBe(true);
 		expect(captured.init?.method).toBe("POST");
+		expect(captured.init?.redirect).toBe("error");
 		const headers = captured.init?.headers as Record<string, string>;
 		expect(headers.Authorization).toMatch(/^Basic /);
 		expect(headers["Content-Type"]).toBe("application/json");
@@ -62,7 +64,7 @@ describe("CloudPaymentsHttpClient.post", () => {
 				async () => new Response("denied", { status: 401, statusText: "Unauthorized" }),
 			),
 		});
-		await expect(client.post("https://x.test/", {})).rejects.toBeInstanceOf(CloudPaymentsAuthError);
+		await expect(client.post("/", {})).rejects.toBeInstanceOf(CloudPaymentsAuthError);
 	});
 
 	test("retries 5xx up to maxAttempts and throws", async () => {
@@ -75,7 +77,9 @@ describe("CloudPaymentsHttpClient.post", () => {
 				return new Response("boom", { status: 503, statusText: "Service Unavailable" });
 			}),
 		});
-		await expect(client.post("https://x.test/", {})).rejects.toBeInstanceOf(CloudPaymentsHttpError);
+		await expect(client.post("/", {}, { replaySafety: "safe" })).rejects.toBeInstanceOf(
+			CloudPaymentsHttpError,
+		);
 		expect(calls).toBe(3);
 	});
 
@@ -96,7 +100,7 @@ describe("CloudPaymentsHttpClient.post", () => {
 				return new Response(JSON.stringify({ Success: true }), { status: 200 });
 			}),
 		});
-		const res = await client.post<{ Success: boolean }>("https://x.test/", {});
+		const res = await client.post<{ Success: boolean }>("/", {}, { replaySafety: "safe" });
 		expect(res.Success).toBe(true);
 		expect(calls).toBe(2);
 	});
@@ -107,12 +111,10 @@ describe("CloudPaymentsHttpClient.post", () => {
 			retry: { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 2 },
 			fetch: mockFetch(async () => new Response("", { status: 429, statusText: "TMR" })),
 		});
-		await expect(client.post("https://x.test/", {})).rejects.toBeInstanceOf(
-			CloudPaymentsRateLimitError,
-		);
+		await expect(client.post("/", {})).rejects.toBeInstanceOf(CloudPaymentsRateLimitError);
 	});
 
-	test("wraps fetch throws in CloudPaymentsNetworkError", async () => {
+	test("reports unknown mutation outcome after fetch throws", async () => {
 		const client = new CloudPaymentsHttpClient({
 			credentials: creds,
 			retry: { maxAttempts: 1 },
@@ -120,8 +122,100 @@ describe("CloudPaymentsHttpClient.post", () => {
 				throw new Error("ECONNREFUSED");
 			}),
 		});
-		await expect(client.post("https://x.test/", {})).rejects.toBeInstanceOf(
-			CloudPaymentsNetworkError,
+		await expect(client.post("/", {})).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+	});
+
+	test("reports a successful response with invalid JSON as an SDK contract error", async () => {
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetch(async () => new Response("<html>not json</html>", { status: 200 })),
+		});
+
+		await expect(client.post("/", {}, { replaySafety: "safe" })).rejects.toBeInstanceOf(
+			CloudPaymentsSdkError,
 		);
+	});
+
+	test("reports an ambiguous mutation response as an unknown outcome", async () => {
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetch(async () => new Response("<html>not json</html>", { status: 200 })),
+		});
+
+		await expect(client.post("/", {})).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+	});
+
+	test("reports a mutation 5xx as an unknown outcome without replay", async () => {
+		let calls = 0;
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetch(async () => {
+				calls++;
+				return new Response("boom", { status: 503 });
+			}),
+		});
+
+		await expect(client.post("/", {})).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+		expect(calls).toBe(1);
+	});
+
+	test("retries mutation with the same idempotency key", async () => {
+		const requestIds: string[] = [];
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0 },
+			fetch: mockFetch(async (_url, init) => {
+				requestIds.push((init.headers as Record<string, string>)["X-Request-ID"] ?? "");
+				return requestIds.length === 1
+					? new Response("retry", { status: 503 })
+					: new Response(JSON.stringify({ Success: true }), { status: 200 });
+			}),
+		});
+
+		await client.post("/", { Amount: 10 }, { idempotencyKey: "payment-42" });
+
+		expect(requestIds).toEqual(["payment-42", "payment-42"]);
+	});
+
+	test("partial request retry options preserve client maxAttempts", async () => {
+		let calls = 0;
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxAttempts: 4, baseDelayMs: 0, maxDelayMs: 0 },
+			fetch: mockFetch(async () => {
+				calls++;
+				return calls < 4
+					? new Response("retry", { status: 503 })
+					: new Response(JSON.stringify({ Success: true }), { status: 200 });
+			}),
+		});
+
+		const response = await client.post<{ Success: boolean }>(
+			"/",
+			{},
+			{
+				replaySafety: "safe",
+				retry: { baseDelayMs: 0 },
+			},
+		);
+
+		expect(response.Success).toBe(true);
+		expect(calls).toBe(4);
+	});
+
+	test("routes relative endpoints through baseUrl", async () => {
+		let requestedUrl = "";
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			baseUrl: "https://api.cp.kz",
+			fetch: mockFetch(async (url) => {
+				requestedUrl = url;
+				return new Response("{}", { status: 200 });
+			}),
+		});
+
+		await client.post("/test", {}, { replaySafety: "safe" });
+
+		expect(requestedUrl).toBe("https://api.cp.kz/test");
 	});
 });

@@ -18,11 +18,27 @@ export class CloudPaymentsError extends Error {
 	}
 }
 
-/** Сбой транспорта: DNS, connection, timeout, abort, fetch throw. */
+/** Сбой транспорта: DNS, connection, timeout или другой fetch throw. */
 export class CloudPaymentsNetworkError extends CloudPaymentsError {
 	constructor(message: string, cause: unknown) {
 		super(message);
 		this.name = "CloudPaymentsNetworkError";
+		if (cause !== undefined) this.cause = cause;
+	}
+}
+
+/**
+ * Неоднозначный результат mutation-запроса без ключа идемпотентности.
+ * Сюда входят сетевой обрыв, transient HTTP-ошибка и некорректный успешный
+ * ответ: операция могла быть обработана, поэтому её нужно сначала сверить.
+ */
+export class CloudPaymentsUnknownOutcomeError extends CloudPaymentsError {
+	constructor(
+		public readonly endpoint: string,
+		cause: unknown,
+	) {
+		super("Request outcome is unknown; reconcile it before retrying");
+		this.name = "CloudPaymentsUnknownOutcomeError";
 		if (cause !== undefined) this.cause = cause;
 	}
 }
@@ -115,10 +131,12 @@ export class CloudPaymentsBusinessError extends CloudPaymentsError {
 		return this.category() === "invalidRequest";
 	}
 
-	/** Стоит ли попробовать повторить операцию (без изменения параметров). */
+	/**
+	 * Provider указал временную сетевую ошибку. Для mutation повтор допустим
+	 * только с тем же ключом идемпотентности.
+	 */
 	isRetriable(): boolean {
-		const c = this.category();
-		return c === "networkError" || c === "serviceError";
+		return this.category() === "networkError";
 	}
 }
 
@@ -143,8 +161,9 @@ export class CloudPayments3DsRequiredError extends CloudPaymentsError {
 
 /** SDK-инварианты: некорректное использование, неконсистентный ответ API и т.п. */
 export class CloudPaymentsSdkError extends CloudPaymentsError {
-	constructor(message: string) {
+	constructor(message: string, cause?: unknown) {
 		super(message);
 		this.name = "CloudPaymentsSdkError";
+		if (cause !== undefined) this.cause = cause;
 	}
 }

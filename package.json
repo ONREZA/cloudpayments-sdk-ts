@@ -5,6 +5,14 @@
 	"type": "module",
 	"license": "MIT",
 	"author": "ONREZA",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ONREZA/cloudpayments-sdk-ts.git"
+	},
+	"bugs": {
+		"url": "https://github.com/ONREZA/cloudpayments-sdk-ts/issues"
+	},
+	"homepage": "https://github.com/ONREZA/cloudpayments-sdk-ts#readme",
 	"keywords": [
 		"cloudpayments",
 		"payments",
@@ -13,11 +21,15 @@
 		"typescript"
 	],
 	"engines": {
-		"node": ">=18"
+		"node": ">=24.0.0"
+	},
+	"packageManager": "bun@1.3.14",
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
 	},
 	"sideEffects": false,
-	"main": "./dist/index.cjs",
-	"module": "./dist/index.js",
+	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
@@ -26,8 +38,8 @@
 				"default": "./dist/index.js"
 			},
 			"require": {
-				"types": "./dist/index.d.cts",
-				"default": "./dist/index.cjs"
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
 			}
 		},
 		"./webhooks": {
@@ -36,8 +48,8 @@
 				"default": "./dist/webhooks.js"
 			},
 			"require": {
-				"types": "./dist/webhooks.d.cts",
-				"default": "./dist/webhooks.cjs"
+				"types": "./dist/webhooks.d.ts",
+				"default": "./dist/webhooks.js"
 			}
 		},
 		"./errors": {
@@ -46,8 +58,8 @@
 				"default": "./dist/errors.js"
 			},
 			"require": {
-				"types": "./dist/errors.d.cts",
-				"default": "./dist/errors.cjs"
+				"types": "./dist/errors.d.ts",
+				"default": "./dist/errors.js"
 			}
 		},
 		"./package.json": "./package.json"
@@ -58,8 +70,8 @@
 		"LICENSE"
 	],
 	"scripts": {
-		"build": "tsup",
-		"dev": "tsup --watch",
+		"build": "tsdown",
+		"dev": "tsdown --watch",
 		"test": "bun test test/unit",
 		"test:integration": "bun test test/integration",
 		"test:all": "bun test",
@@ -68,20 +80,22 @@
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
 		"gen": "bun tools/gen.ts",
+		"gen:check": "bun tools/check-generated.ts",
+		"verify": "bun run gen:check && bun run lint && bun run typecheck && bun run test && bun run build",
+		"package:smoke": "node tools/package-smoke.mjs",
 		"docs:scrape": "bun tools/scrape.ts",
 		"docs:parse": "bun tools/parse.ts",
 		"docs:sync": "bun tools/sync.ts",
 		"prepare": "lefthook install || echo 'Install lefthook: https://github.com/evilmartians/lefthook'",
-		"release": "onreza-release"
+		"prepack": "bun run gen:check && bun run build"
 	},
 	"dependencies": {},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.12",
-		"@types/bun": "latest",
-		"cheerio": "^1.0.0",
-		"lefthook": "^2.1.4",
-		"onreza-release": "^2.7.0",
-		"tsup": "^8.3.5",
+		"@biomejs/biome": "^2.5.5",
+		"@types/bun": "^1.3.14",
+		"cheerio": "^1.2.0",
+		"lefthook": "^2.1.10",
+		"tsdown": "^0.22.14",
 		"typescript": "^6.0.3"
 	}
 }

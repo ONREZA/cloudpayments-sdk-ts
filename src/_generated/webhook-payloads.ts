@@ -3,7 +3,28 @@
  * Do not edit directly — run `bun run gen` instead.
  */
 
-import type { NotificationType, OperationType, TransactionStatus, Currency, CultureName } from "./handbooks.js";
+import type { OperationType, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";
+
+/** Runtime coercion schema для form-urlencoded webhook payload-ов. */
+export const WEBHOOK_FIELD_KINDS = {
+	Amount: "number",
+	CustomFields: "json",
+	Data: "json",
+	FailedTransactionsNumber: "number",
+	FallBackScenarioDeclinedTransactionId: "number",
+	MaxPeriods: "number",
+	PaymentTransactionId: "number",
+	Period: "number",
+	ProcessorAndPartnerFee: "number",
+	ReasonCode: "number",
+	RequireConfirmation: "boolean",
+	SuccessfulTransactionsNumber: "number",
+	TestMode: "number",
+	TotalFee: "number",
+	TransactionId: "number",
+	VatAboveTotalFee: "number",
+	VatWithinProcessorFee: "number",
+} as const;
 
 /**
  * Payload уведомления Check.
@@ -384,7 +405,7 @@ export interface RecurrentNotificationPayload {
 	/** Период. В комбинации с интервалом 1 Month значит раз в месяц, а 2 Week — раз в две недели */
 	Period: number;
 	/** [Статусы подписок](#statusy-podpisok-rekurrent) */
-	Status: TransactionStatus;
+	Status: SubscriptionStatus;
 	/** Количество успешных платежей */
 	SuccessfulTransactionsNumber: number;
 	/** Количество неуспешных платежей (обнуляется после каждого успешного) */
@@ -421,5 +442,5 @@ export interface CancelNotificationPayload {
 	Rrn?: string;
 }
 
-/** Discriminated union всех входящих payload-ов по заголовку X-Content-HMAC. */
+/** Union всех входящих webhook payload-ов. Тип определяется endpoint-ом. */
 export type AnyWebhookPayload = CheckNotificationPayload | PayNotificationPayload | FailNotificationPayload | ConfirmNotificationPayload | RefundNotificationPayload | RecurrentNotificationPayload | CancelNotificationPayload;

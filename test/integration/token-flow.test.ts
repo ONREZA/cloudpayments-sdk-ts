@@ -21,15 +21,18 @@ describe.skipIf(!HAS_CREDS)("integration: token flow", () => {
 			publicId: CP_TEST_PUBLIC_ID,
 			card: TEST_CARDS.visaNo3dsApproved,
 		});
-		const initial = await cp.payments.chargeCryptogram({
-			Amount: 10,
-			Currency: "RUB",
-			IpAddress: "127.0.0.1",
-			CardCryptogramPacket: cryptogram,
-			AccountId: accountId,
-			SaveCard: true,
-			Description: "sdk integration: initial charge with SaveCard",
-		});
+		const initial = await cp.payments.chargeCryptogram(
+			{
+				Amount: 10,
+				Currency: "RUB",
+				IpAddress: "127.0.0.1",
+				CardCryptogramPacket: cryptogram,
+				AccountId: accountId,
+				SaveCard: true,
+				Description: "sdk integration: initial charge with SaveCard",
+			},
+			{ idempotencyKey: `sdk-token-initial-${accountId}` },
+		);
 		expect(initial.Status).toBe("Completed");
 		expect(initial.Token).toBeTruthy();
 
@@ -42,15 +45,18 @@ describe.skipIf(!HAS_CREDS)("integration: token flow", () => {
 		// Шаг 2: повторное списание по токену.
 		// TrInitiatorCode=0 — транзакция инициирована ТСП (рекарринг, не пользователь).
 		// При TrInitiatorCode=0 обязателен и PaymentScheduled.
-		const recurring = await cp.payments.chargeToken({
-			Amount: 7,
-			Currency: "RUB",
-			AccountId: accountId,
-			Token: initial.Token,
-			TrInitiatorCode: 0,
-			PaymentScheduled: 0,
-			Description: "sdk integration: charge by saved token",
-		});
+		const recurring = await cp.payments.chargeToken(
+			{
+				Amount: 7,
+				Currency: "RUB",
+				AccountId: accountId,
+				Token: initial.Token,
+				TrInitiatorCode: 0,
+				PaymentScheduled: 0,
+				Description: "sdk integration: charge by saved token",
+			},
+			{ idempotencyKey: `sdk-token-recurring-${accountId}` },
+		);
 		expect(recurring.Status).toBe("Completed");
 		expect(recurring.Token).toBeTruthy();
 	}, 120_000);

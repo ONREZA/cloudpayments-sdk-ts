@@ -32,7 +32,9 @@ export class SubscriptionsModule extends BaseModule {
 
 	/** Получить одну подписку по Id. */
 	get(body: SubscriptionsGetRequest, opts?: ExecOptions): Promise<Subscription> {
-		return this.exec<SubscriptionsGetRequest, Subscription>(SUBSCRIPTIONS_GET_URL, body, opts);
+		return this.exec<SubscriptionsGetRequest, Subscription>(SUBSCRIPTIONS_GET_URL, body, opts, {
+			replaySafety: "safe",
+		});
 	}
 
 	/** Поиск подписок по AccountId. */
@@ -44,6 +46,7 @@ export class SubscriptionsModule extends BaseModule {
 			SUBSCRIPTIONS_FIND_BY_ACCOUNT_URL,
 			body,
 			opts,
+			{ replaySafety: "safe" },
 		);
 	}
 
