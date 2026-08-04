@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.2.0...v0.2.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* **release:** restore label lifecycle ([e21498f](https://github.com/ONREZA/cloudpayments-sdk-ts/commit/e21498f842978b1d26b10d1005dd6222e4382735))
+* **webhooks:** accept empty optional scalars ([444ee7f](https://github.com/ONREZA/cloudpayments-sdk-ts/commit/444ee7f71c500600afc31da23211c72d4dbc92fd))
+
 ## [0.2.0](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.1.0...v0.2.0) (2026-07-27)
 
 
