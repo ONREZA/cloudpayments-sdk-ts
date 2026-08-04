@@ -76,15 +76,14 @@ const server = Bun.serve({
 				signature,
 				signatureKind: contentHmac ? "content-hmac" : "x-content-hmac",
 				apiSecret: API_SECRET,
-				// Убедитесь что формат совпадает с настройками в ЛК CP:
-				contentType: "application/json",
+				contentType: req.headers.get("content-type") ?? undefined,
 			});
 			const response = handleEvent(type, payload);
 			return Response.json(response);
 		} catch (err) {
 			if (err instanceof WebhookVerificationError) {
 				console.warn(`[${type}] rejected: ${err.reason}`);
-				return new Response(err.message, { status: 401 });
+				return new Response(err.message, { status: err.signatureVerified ? 500 : 401 });
 			}
 			console.error(`[${type}] handler error:`, err);
 			return new Response("internal error", { status: 500 });

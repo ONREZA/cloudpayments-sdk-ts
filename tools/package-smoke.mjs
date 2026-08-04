@@ -55,6 +55,13 @@ try {
 	assert.equal(typeof required.CloudPaymentsClient, "function");
 	assert.equal(typeof webhooks.verifyWebhook, "function");
 	assert.equal(typeof requiredWebhooks.verifyWebhook, "function");
+	assert.equal(webhooks.WebhookVerificationError, requiredWebhooks.WebhookVerificationError);
+	const webhookError = new webhooks.WebhookVerificationError(
+		"bad payload",
+		"bad_body",
+		"body_parsing",
+	);
+	assert.equal(webhookError.signatureVerified, true);
 	assert.equal(typeof errors.CloudPaymentsUnknownOutcomeError, "function");
 	assert.equal(typeof requiredErrors.CloudPaymentsUnknownOutcomeError, "function");
 	assert.equal(esm.CloudPaymentsUnknownOutcomeError, errors.CloudPaymentsUnknownOutcomeError);
@@ -81,11 +88,13 @@ try {
 		join(consumer, "smoke.ts"),
 		[
 			'import { CloudPaymentsClient } from "@onreza/cloudpayments-sdk";',
-			'import { verifyWebhook } from "@onreza/cloudpayments-sdk/webhooks";',
+			'import { WebhookVerificationError, type WebhookVerificationStage, verifyWebhook } from "@onreza/cloudpayments-sdk/webhooks";',
 			'import { CloudPaymentsUnknownOutcomeError } from "@onreza/cloudpayments-sdk/errors";',
 			"const client = new CloudPaymentsClient({ publicId: 'test', apiSecret: 'test' });",
 			"void client.payments.get({ TransactionId: 1 });",
 			"void verifyWebhook({ rawBody: '', signature: 'test', apiSecret: 'test' });",
+			"const webhookStage: WebhookVerificationStage = 'body_parsing';",
+			"void new WebhookVerificationError('bad payload', 'bad_body', webhookStage).signatureVerified;",
 			"void CloudPaymentsUnknownOutcomeError;",
 		].join("\n"),
 	);
@@ -98,6 +107,8 @@ try {
 			"const client = new sdk.CloudPaymentsClient({ publicId: 'test', apiSecret: 'test' });",
 			"void client.payments.get({ TransactionId: 1 });",
 			"void webhooks.verifyWebhook({ rawBody: '', signature: 'test', apiSecret: 'test' });",
+			"const webhookStage: webhooks.WebhookVerificationStage = 'body_parsing';",
+			"void new webhooks.WebhookVerificationError('bad payload', 'bad_body', webhookStage).signatureVerified;",
 			"void errors.CloudPaymentsUnknownOutcomeError;",
 		].join("\n"),
 	);

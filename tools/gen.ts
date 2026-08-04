@@ -547,7 +547,7 @@ function writeWebhookPayloads(ir: IR): string {
 	parts.push(
 		`import type { OperationType, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";\n`,
 	);
-	parts.push(renderWebhookFieldKinds(ir));
+	parts.push(renderWebhookFieldSchemas(ir));
 
 	for (const spec of WEBHOOK_PAYLOADS) {
 		const g = findGroupDeep(ir, spec.anchor);
@@ -564,29 +564,43 @@ function writeWebhookPayloads(ir: IR): string {
 
 type WebhookFieldKind = "string" | "number" | "boolean" | "json";
 
-function renderWebhookFieldKinds(ir: IR): string {
-	const fields = new Map<string, WebhookFieldKind>();
+interface WebhookFieldSchema {
+	kind: WebhookFieldKind;
+	optional: boolean;
+}
+
+function renderWebhookFieldSchemas(ir: IR): string {
+	const fields = new Map<string, WebhookFieldSchema>();
 	for (const spec of WEBHOOK_PAYLOADS) {
 		const group = findGroupDeep(ir, spec.anchor);
 		if (!group) continue;
 		for (const param of group.params) {
 			const kind = webhookFieldKind(tsTypeForWebhook(param, spec.type));
+			const optional = !param.required;
 			const existing = fields.get(param.name);
-			if (existing && existing !== kind) {
+			if (existing && existing.kind !== kind) {
 				throw new Error(
-					`Webhook field ${param.name} has conflicting runtime kinds: ${existing} and ${kind}`,
+					`Webhook field ${param.name} has conflicting runtime kinds: ${existing.kind} and ${kind}`,
 				);
 			}
-			fields.set(param.name, kind);
+			if (existing && kind !== "string" && existing.optional !== optional) {
+				throw new Error(
+					`Webhook field ${param.name} has conflicting optionality across notification types`,
+				);
+			}
+			if (!existing) fields.set(param.name, { kind, optional });
 		}
 	}
 
 	const entries = [...fields]
-		.filter(([, kind]) => kind !== "string")
+		.filter(([, field]) => field.kind !== "string")
 		.sort(([left], [right]) => left.localeCompare(right))
-		.map(([name, kind]) => `\t${fieldName(name)}: ${JSON.stringify(kind)},`)
+		.map(
+			([name, field]) =>
+				`\t${fieldName(name)}: { kind: ${JSON.stringify(field.kind)}, optional: ${field.optional} },`,
+		)
 		.join("\n");
-	return `${jsDoc(["Runtime coercion schema для form-urlencoded webhook payload-ов."])}export const WEBHOOK_FIELD_KINDS = {\n${entries}\n} as const;\n`;
+	return `${jsDoc(["Runtime coercion schema для form-urlencoded webhook payload-ов."])}export const WEBHOOK_FIELD_SCHEMAS = {\n${entries}\n} as const;\n`;
 }
 
 function webhookFieldKind(tsType: string): WebhookFieldKind {

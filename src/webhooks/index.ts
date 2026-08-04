@@ -24,7 +24,7 @@ import type {
 	RecurrentNotificationPayload,
 	RefundNotificationPayload,
 } from "../_generated/webhook-payloads.js";
-import { WEBHOOK_FIELD_KINDS } from "../_generated/webhook-payloads.js";
+import { WEBHOOK_FIELD_SCHEMAS } from "../_generated/webhook-payloads.js";
 
 export type {
 	AnyWebhookPayload,
@@ -46,13 +46,24 @@ export type WebhookVerificationReason =
 
 export type WebhookSignatureKind = "content-hmac" | "x-content-hmac";
 
+export type WebhookVerificationStage =
+	| "pre_verification"
+	| "signature_verification"
+	| "body_parsing";
+
 export class WebhookVerificationError extends Error {
+	/** `true` только после успешного сравнения HMAC, до разбора payload. */
+	public readonly signatureVerified: boolean;
+
 	constructor(
 		message: string,
 		public readonly reason: WebhookVerificationReason,
+		/** Стадия, на которой SDK отклонил webhook. */
+		public readonly stage: WebhookVerificationStage = "pre_verification",
 	) {
 		super(message);
 		this.name = "WebhookVerificationError";
+		this.signatureVerified = stage === "body_parsing";
 	}
 }
 
@@ -84,7 +95,11 @@ export interface VerifyWebhookInput {
  */
 export async function verifyWebhook<T = AnyWebhookPayload>(input: VerifyWebhookInput): Promise<T> {
 	if (!input.signature) {
-		throw new WebhookVerificationError("Missing signature header", "missing_signature");
+		throw new WebhookVerificationError(
+			"Missing signature header",
+			"missing_signature",
+			"signature_verification",
+		);
 	}
 	const bodyBytes = typeof input.rawBody === "string" ? encodeUtf8(input.rawBody) : input.rawBody;
 	const bodyStr =
@@ -96,13 +111,17 @@ export async function verifyWebhook<T = AnyWebhookPayload>(input: VerifyWebhookI
 			: bodyBytes;
 	const expected = await hmacSha256Base64(input.apiSecret, signatureBytes);
 	if (!timingSafeEqual(expected, input.signature)) {
-		throw new WebhookVerificationError("Signature mismatch", "signature_mismatch");
+		throw new WebhookVerificationError(
+			"Signature mismatch",
+			"signature_mismatch",
+			"signature_verification",
+		);
 	}
 	if (contentType === "application/json") {
 		try {
 			return JSON.parse(bodyStr) as T;
 		} catch (_err) {
-			throw new WebhookVerificationError("Body is not valid JSON", "bad_body");
+			throw bodyParsingError("Body is not valid JSON");
 		}
 	}
 	return parseFormUrlEncoded(bodyStr) as T;
@@ -146,6 +165,7 @@ async function hmacSha256Base64(secret: string, data: Uint8Array): Promise<strin
 		throw new WebhookVerificationError(
 			"WebCrypto (crypto.subtle) is not available in this runtime",
 			"crypto_unavailable",
+			"signature_verification",
 		);
 	}
 	const keyBytes = encodeUtf8(secret);
@@ -173,11 +193,19 @@ function timingSafeEqual(a: string, b: string): boolean {
 	return diff === 0;
 }
 
+const OMIT_FORM_FIELD = Symbol("omit-form-field");
+
+interface WebhookFieldSchema {
+	readonly kind: "number" | "boolean" | "json";
+	readonly optional: boolean;
+}
+
 function parseFormUrlEncoded(body: string): Record<string, unknown> {
 	const params = new URLSearchParams(body);
 	const result: Record<string, unknown> = {};
 	for (const [key, rawVal] of params) {
 		const val = parseFormValue(key, rawVal);
+		if (val === OMIT_FORM_FIELD) continue;
 		if (key in result) {
 			const existing = result[key];
 			if (Array.isArray(existing)) existing.push(val);
@@ -190,32 +218,36 @@ function parseFormUrlEncoded(body: string): Record<string, unknown> {
 }
 
 function parseFormValue(key: string, value: string): unknown {
-	const fieldKind = (WEBHOOK_FIELD_KINDS as Partial<Record<string, "number" | "boolean" | "json">>)[
-		key
-	];
-	if (fieldKind === "number") {
+	const fieldSchema = (WEBHOOK_FIELD_SCHEMAS as Partial<Record<string, WebhookFieldSchema>>)[key];
+	if (fieldSchema?.kind === "number") {
+		if (value === "" && fieldSchema.optional) return OMIT_FORM_FIELD;
 		if (value.trim() === "") {
-			throw new WebhookVerificationError(`Field ${key} is not a valid number`, "bad_body");
+			throw bodyParsingError(`Field ${key} is not a valid number`);
 		}
 		const number = Number(value);
 		if (!Number.isFinite(number)) {
-			throw new WebhookVerificationError(`Field ${key} is not a valid number`, "bad_body");
+			throw bodyParsingError(`Field ${key} is not a valid number`);
 		}
 		return number;
 	}
-	if (fieldKind === "boolean") {
+	if (fieldSchema?.kind === "boolean") {
+		if (value === "" && fieldSchema.optional) return OMIT_FORM_FIELD;
 		if (value === "true" || value === "1") return true;
 		if (value === "false" || value === "0") return false;
-		throw new WebhookVerificationError(`Field ${key} is not a valid boolean`, "bad_body");
+		throw bodyParsingError(`Field ${key} is not a valid boolean`);
 	}
-	if (fieldKind === "json" && value !== "") {
+	if (fieldSchema?.kind === "json" && value !== "") {
 		try {
 			return JSON.parse(value) as unknown;
 		} catch {
-			throw new WebhookVerificationError(`Field ${key} is not valid JSON`, "bad_body");
+			throw bodyParsingError(`Field ${key} is not valid JSON`);
 		}
 	}
 	return value;
+}
+
+function bodyParsingError(message: string): WebhookVerificationError {
+	return new WebhookVerificationError(message, "bad_body", "body_parsing");
 }
 
 function normalizeContentType(
@@ -231,6 +263,7 @@ function normalizeContentType(
 	throw new WebhookVerificationError(
 		`Unsupported Content-Type: ${contentType}`,
 		"bad_content_type",
+		"pre_verification",
 	);
 }
 
@@ -238,6 +271,10 @@ function decodeFormForSignature(body: string): string {
 	try {
 		return decodeURIComponent(body.replace(/\+/g, " "));
 	} catch {
-		throw new WebhookVerificationError("Body is not valid URL-encoded data", "bad_body");
+		throw new WebhookVerificationError(
+			"Body is not valid URL-encoded data",
+			"bad_body",
+			"signature_verification",
+		);
 	}
 }

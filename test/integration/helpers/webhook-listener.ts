@@ -13,9 +13,8 @@
  *  - гоним через verifyWebhook — тот же код, что в публичном SDK
  *  - складываем в очередь для ожидающих waiter-ов
  *
- * На любой запрос отвечаем `{code: 0}` — стандартный «success» для Check.
- * Для остальных типов CP ответ не проверяет, но отдавать что-то валидное
- * обязательно, чтобы CP не пометил уведомление как неуспешное.
+ * Успешно разобранный запрос подтверждаем `{code: 0}`. Непроверенную подпись
+ * отклоняем, а authenticated parse failure оставляем retriable.
  */
 import { verifyWebhook, WebhookVerificationError } from "../../../src/webhooks/index.js";
 
@@ -95,6 +94,7 @@ export class WebhookListener {
 		let verified = false;
 		let payload: unknown = null;
 		let verificationError: string | undefined;
+		let failureStatus: number | undefined;
 
 		try {
 			payload = await verifyWebhook({
@@ -108,6 +108,7 @@ export class WebhookListener {
 		} catch (err) {
 			verificationError =
 				err instanceof WebhookVerificationError ? `${err.reason}: ${err.message}` : String(err);
+			failureStatus = err instanceof WebhookVerificationError && !err.signatureVerified ? 401 : 500;
 		}
 
 		const headers: Record<string, string> = {};
@@ -135,6 +136,9 @@ export class WebhookListener {
 			w?.resolve(event);
 		}
 
+		if (failureStatus !== undefined) {
+			return new Response(verificationError, { status: failureStatus });
+		}
 		return Response.json({ code: 0 });
 	}
 

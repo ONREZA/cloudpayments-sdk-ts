@@ -6,24 +6,24 @@
 import type { OperationType, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";
 
 /** Runtime coercion schema для form-urlencoded webhook payload-ов. */
-export const WEBHOOK_FIELD_KINDS = {
-	Amount: "number",
-	CustomFields: "json",
-	Data: "json",
-	FailedTransactionsNumber: "number",
-	FallBackScenarioDeclinedTransactionId: "number",
-	MaxPeriods: "number",
-	PaymentTransactionId: "number",
-	Period: "number",
-	ProcessorAndPartnerFee: "number",
-	ReasonCode: "number",
-	RequireConfirmation: "boolean",
-	SuccessfulTransactionsNumber: "number",
-	TestMode: "number",
-	TotalFee: "number",
-	TransactionId: "number",
-	VatAboveTotalFee: "number",
-	VatWithinProcessorFee: "number",
+export const WEBHOOK_FIELD_SCHEMAS = {
+	Amount: { kind: "number", optional: false },
+	CustomFields: { kind: "json", optional: true },
+	Data: { kind: "json", optional: true },
+	FailedTransactionsNumber: { kind: "number", optional: false },
+	FallBackScenarioDeclinedTransactionId: { kind: "number", optional: true },
+	MaxPeriods: { kind: "number", optional: true },
+	PaymentTransactionId: { kind: "number", optional: false },
+	Period: { kind: "number", optional: false },
+	ProcessorAndPartnerFee: { kind: "number", optional: true },
+	ReasonCode: { kind: "number", optional: false },
+	RequireConfirmation: { kind: "boolean", optional: false },
+	SuccessfulTransactionsNumber: { kind: "number", optional: false },
+	TestMode: { kind: "number", optional: false },
+	TotalFee: { kind: "number", optional: true },
+	TransactionId: { kind: "number", optional: false },
+	VatAboveTotalFee: { kind: "number", optional: true },
+	VatWithinProcessorFee: { kind: "number", optional: true },
 } as const;
 
 /**

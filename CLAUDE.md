@@ -122,20 +122,25 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 
 CP шлёт POST с HMAC-SHA256 в заголовке `Content-HMAC` или `X-Content-HMAC`.
 Первый подписывает encoded body, второй — URL-decoded body.
+`WebhookVerificationError.signatureVerified` становится `true` только после
+успешного HMAC: authenticated parse failure можно retry, mismatch подписи — нет.
 
 ```ts
 import { verifyCheckWebhook, WebhookVerificationError } from "@onreza/cloudpayments-sdk/webhooks";
 try {
+  const contentHmac = req.headers["content-hmac"];
   const payload = await verifyCheckWebhook({
-    rawBody: req.body,
-    signature: req.headers["content-hmac"],
-    signatureKind: "content-hmac",
+    rawBody: req.rawBody, // до body parser
+    signature: contentHmac ?? req.headers["x-content-hmac"],
+    signatureKind: contentHmac ? "content-hmac" : "x-content-hmac",
     apiSecret: process.env.CP_API_SECRET,
+    contentType: req.headers["content-type"],
   });
   // payload типизирован как CheckNotificationPayload
 } catch (e) {
   if (e instanceof WebhookVerificationError) {
     // e.reason: "signature_mismatch" | "missing_signature" | "bad_body" | ...
+    // e.stage + e.signatureVerified безопасно разделяют retry-классы.
   }
 }
 ```

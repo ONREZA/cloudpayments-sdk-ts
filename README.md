@@ -88,20 +88,24 @@ CloudPayments шлёт уведомления разных типов (Check/Pay
 import { verifyCheckWebhook, WebhookVerificationError } from "@onreza/cloudpayments-sdk/webhooks";
 
 app.post("/cp-webhook/check", async (req, res) => {
+  const contentHmac = req.get("content-hmac");
+  const signature = contentHmac ?? req.get("x-content-hmac");
+
   try {
     const payload = await verifyCheckWebhook({
       rawBody: req.rawBody, // сырое тело — НЕ parsed JSON
-      signature: req.headers["content-hmac"],
-      signatureKind: "content-hmac",
+      signature,
+      signatureKind: contentHmac ? "content-hmac" : "x-content-hmac",
       apiSecret: process.env.CP_API_SECRET!,
-      contentType: "application/json",
+      contentType: req.get("content-type"),
     });
     // payload типизирован как CheckNotificationPayload
     res.json({ code: 0 }); // одобряем платёж
   } catch (e) {
     if (e instanceof WebhookVerificationError) {
       console.warn("Reject webhook:", e.reason);
-      res.status(401).end();
+      // Authenticated parse failure можно retry; поддельную подпись — нельзя.
+      res.status(e.signatureVerified ? 500 : 401).end();
     } else {
       throw e;
     }
