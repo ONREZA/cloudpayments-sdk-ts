@@ -9,6 +9,8 @@ import type {
 	PaymentsChargeCryptogramRequest,
 	PaymentsChargeTokenRequest,
 	PaymentsConfirmRequest,
+	PaymentsFindLegacyRequest,
+	PaymentsFindRequest,
 	PaymentsGetRequest,
 	PaymentsListByDayRequest,
 	PaymentsListByPeriodRequest,
@@ -28,6 +30,8 @@ import {
 	PAYMENTS_CHARGE_CRYPTOGRAM_URL,
 	PAYMENTS_CHARGE_TOKEN_URL,
 	PAYMENTS_CONFIRM_URL,
+	PAYMENTS_FIND_LEGACY_URL,
+	PAYMENTS_FIND_URL,
 	PAYMENTS_GET_URL,
 	PAYMENTS_LIST_BY_DAY_URL,
 	PAYMENTS_LIST_BY_PERIOD_URL,
@@ -42,7 +46,7 @@ import {
 	PAYMENTS_VOID_URL,
 } from "../_generated/endpoints.js";
 import { CloudPaymentsBusinessError } from "../errors/index.js";
-import type { TokenRecord, Transaction } from "../types.js";
+import type { Chargeback, TokenRecord, Transaction } from "../types.js";
 import { BaseModule, type ExecOptions } from "./base.js";
 
 export class PaymentsModule extends BaseModule {
@@ -175,6 +179,20 @@ export class PaymentsModule extends BaseModule {
 		);
 	}
 
+	/** Найти последнюю операцию по InvoiceId через актуальный v2 endpoint. */
+	find(body: PaymentsFindRequest, opts?: ExecOptions): Promise<Transaction> {
+		return this.exec<PaymentsFindRequest, Transaction>(PAYMENTS_FIND_URL, body, opts, {
+			replaySafety: "safe",
+		});
+	}
+
+	/** @deprecated Старый endpoint не ищет возвраты и выплаты. Используйте {@link find}. */
+	findLegacy(body: PaymentsFindLegacyRequest, opts?: ExecOptions): Promise<Transaction> {
+		return this.exec<PaymentsFindLegacyRequest, Transaction>(PAYMENTS_FIND_LEGACY_URL, body, opts, {
+			replaySafety: "safe",
+		});
+	}
+
 	/** Список транзакций за сутки. */
 	listByDay(body: PaymentsListByDayRequest, opts?: ExecOptions): Promise<Transaction[]> {
 		return this.exec<PaymentsListByDayRequest, Transaction[]>(
@@ -225,8 +243,8 @@ export class PaymentsModule extends BaseModule {
 	listClaimsByPeriod(
 		body: PaymentsListClaimsByPeriodRequest,
 		opts?: ExecOptions,
-	): Promise<unknown[]> {
-		return this.exec<PaymentsListClaimsByPeriodRequest, unknown[]>(
+	): Promise<Chargeback[]> {
+		return this.exec<PaymentsListClaimsByPeriodRequest, Chargeback[]>(
 			PAYMENTS_LIST_CLAIMS_BY_PERIOD_URL,
 			body,
 			opts,

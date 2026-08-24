@@ -53,7 +53,13 @@ try {
 
 	assert.equal(typeof esm.CloudPaymentsClient, "function");
 	assert.equal(typeof required.CloudPaymentsClient, "function");
+	assert.equal(typeof esm.KktModule, "function");
+	assert.equal(
+		typeof new esm.CloudPaymentsClient({ publicId: "test", apiSecret: "test" }).kkt.submitReceipt,
+		"function",
+	);
 	assert.equal(typeof webhooks.verifyWebhook, "function");
+	assert.equal(typeof webhooks.verifyReceiptWebhook, "function");
 	assert.equal(typeof requiredWebhooks.verifyWebhook, "function");
 	assert.equal(webhooks.WebhookVerificationError, requiredWebhooks.WebhookVerificationError);
 	const webhookError = new webhooks.WebhookVerificationError(
@@ -87,12 +93,17 @@ try {
 	writeFileSync(
 		join(consumer, "smoke.ts"),
 		[
-			'import { CloudPaymentsClient } from "@onreza/cloudpayments-sdk";',
-			'import { WebhookVerificationError, type WebhookVerificationStage, verifyWebhook } from "@onreza/cloudpayments-sdk/webhooks";',
+			'import { CloudPaymentsClient, type KktReceiptStatus } from "@onreza/cloudpayments-sdk";',
+			'import { WebhookVerificationError, type WebhookVerificationStage, verifyReceiptWebhook, verifyWebhook } from "@onreza/cloudpayments-sdk/webhooks";',
 			'import { CloudPaymentsUnknownOutcomeError } from "@onreza/cloudpayments-sdk/errors";',
 			"const client = new CloudPaymentsClient({ publicId: 'test', apiSecret: 'test' });",
 			"void client.payments.get({ TransactionId: 1 });",
+			"void client.kkt.submitReceipt({ Inn: '7700000000', Type: 'Income', CustomerReceipt: { Items: [{ label: 'Item', price: 1, quantity: 1, amount: 1 }] } });",
+			"void client.kkt.getReceiptStatus({ Id: 'receipt-1' });",
+			"const receiptStatus: KktReceiptStatus = 'Queued';",
+			"void receiptStatus;",
 			"void verifyWebhook({ rawBody: '', signature: 'test', apiSecret: 'test' });",
+			"void verifyReceiptWebhook({ rawBody: '', signature: 'test', apiSecret: 'test' });",
 			"const webhookStage: WebhookVerificationStage = 'body_parsing';",
 			"void new WebhookVerificationError('bad payload', 'bad_body', webhookStage).signatureVerified;",
 			"void CloudPaymentsUnknownOutcomeError;",
@@ -106,7 +117,10 @@ try {
 			'import errors = require("@onreza/cloudpayments-sdk/errors");',
 			"const client = new sdk.CloudPaymentsClient({ publicId: 'test', apiSecret: 'test' });",
 			"void client.payments.get({ TransactionId: 1 });",
+			"void client.kkt.submitReceipt({ Inn: '7700000000', Type: 'Income', CustomerReceipt: { Items: [{ label: 'Item', price: 1, quantity: 1, amount: 1 }] } });",
+			"void client.kkt.getReceiptStatus({ Id: 'receipt-1' });",
 			"void webhooks.verifyWebhook({ rawBody: '', signature: 'test', apiSecret: 'test' });",
+			"void webhooks.verifyReceiptWebhook({ rawBody: '', signature: 'test', apiSecret: 'test' });",
 			"const webhookStage: webhooks.WebhookVerificationStage = 'body_parsing';",
 			"void new webhooks.WebhookVerificationError('bad payload', 'bad_body', webhookStage).signatureVerified;",
 			"void errors.CloudPaymentsUnknownOutcomeError;",

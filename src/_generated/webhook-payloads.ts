@@ -5,25 +5,96 @@
 
 import type { OperationType, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";
 
+import type { KktReceipt, KktReceiptType } from "../models.js";
+
 /** Runtime coercion schema для form-urlencoded webhook payload-ов. */
 export const WEBHOOK_FIELD_SCHEMAS = {
 	Amount: { kind: "number", optional: false },
 	CustomFields: { kind: "json", optional: true },
 	Data: { kind: "json", optional: true },
+	DocumentNumber: { kind: "number", optional: false },
 	FailedTransactionsNumber: { kind: "number", optional: false },
 	FallBackScenarioDeclinedTransactionId: { kind: "number", optional: true },
 	MaxPeriods: { kind: "number", optional: true },
+	Number: { kind: "number", optional: false },
 	PaymentTransactionId: { kind: "number", optional: false },
 	Period: { kind: "number", optional: false },
 	ProcessorAndPartnerFee: { kind: "number", optional: true },
 	ReasonCode: { kind: "number", optional: false },
+	Receipt: { kind: "json", optional: false },
 	RequireConfirmation: { kind: "boolean", optional: false },
+	SessionNumber: { kind: "number", optional: false },
 	SuccessfulTransactionsNumber: { kind: "number", optional: false },
 	TestMode: { kind: "number", optional: false },
 	TotalFee: { kind: "number", optional: true },
 	TransactionId: { kind: "number", optional: false },
 	VatAboveTotalFee: { kind: "number", optional: true },
 	VatWithinProcessorFee: { kind: "number", optional: true },
+} as const;
+
+/** Runtime coercion schemas для конкретных типов webhook payload-ов. */
+export const WEBHOOK_FIELD_SCHEMAS_BY_TYPE = {
+	Check: {
+	Amount: { kind: "number", optional: false },
+	Data: { kind: "json", optional: true },
+	TestMode: { kind: "number", optional: false },
+	TransactionId: { kind: "number", optional: false },
+},
+	Pay: {
+	Amount: { kind: "number", optional: false },
+	CustomFields: { kind: "json", optional: true },
+	Data: { kind: "json", optional: true },
+	FallBackScenarioDeclinedTransactionId: { kind: "number", optional: true },
+	ProcessorAndPartnerFee: { kind: "number", optional: true },
+	TestMode: { kind: "number", optional: false },
+	TotalFee: { kind: "number", optional: true },
+	TransactionId: { kind: "number", optional: false },
+	VatAboveTotalFee: { kind: "number", optional: true },
+	VatWithinProcessorFee: { kind: "number", optional: true },
+},
+	Fail: {
+	Amount: { kind: "number", optional: false },
+	CustomFields: { kind: "json", optional: true },
+	Data: { kind: "json", optional: true },
+	FallBackScenarioDeclinedTransactionId: { kind: "number", optional: true },
+	ReasonCode: { kind: "number", optional: false },
+	TestMode: { kind: "number", optional: false },
+	TransactionId: { kind: "number", optional: false },
+},
+	Confirm: {
+	Amount: { kind: "number", optional: false },
+	Data: { kind: "json", optional: true },
+	TestMode: { kind: "number", optional: false },
+	TransactionId: { kind: "number", optional: false },
+},
+	Refund: {
+	Amount: { kind: "number", optional: false },
+	CustomFields: { kind: "json", optional: true },
+	Data: { kind: "json", optional: true },
+	PaymentTransactionId: { kind: "number", optional: false },
+	TransactionId: { kind: "number", optional: false },
+},
+	Recurrent: {
+	Amount: { kind: "number", optional: false },
+	FailedTransactionsNumber: { kind: "number", optional: false },
+	MaxPeriods: { kind: "number", optional: true },
+	Period: { kind: "number", optional: false },
+	RequireConfirmation: { kind: "boolean", optional: false },
+	SuccessfulTransactionsNumber: { kind: "number", optional: false },
+},
+	Cancel: {
+	Amount: { kind: "number", optional: false },
+	Data: { kind: "json", optional: true },
+	TransactionId: { kind: "number", optional: false },
+},
+	Receipt: {
+	Amount: { kind: "number", optional: false },
+	DocumentNumber: { kind: "number", optional: false },
+	Number: { kind: "number", optional: false },
+	Receipt: { kind: "json", optional: false },
+	SessionNumber: { kind: "number", optional: false },
+	TransactionId: { kind: "number", optional: true },
+},
 } as const;
 
 /**
@@ -442,5 +513,57 @@ export interface CancelNotificationPayload {
 	Rrn?: string;
 }
 
+/**
+ * Payload уведомления Receipt.
+ * Выполняется после выдачи кассового чека.
+ * @see https://developers.cloudkassir.ru/#receipt
+ */
+export interface ReceiptNotificationPayload {
+	/** Уникальный идентификатор чека */
+	Id: string;
+	/** Номер чека */
+	DocumentNumber: number;
+	/** Номер смены */
+	SessionNumber: number;
+	/** Номер чека в смене */
+	Number: number;
+	/** Фискальный признак документа */
+	FiscalSign: string;
+	/** Заводской номер ККТ */
+	DeviceNumber: string;
+	/** Регистрационный номер ККТ */
+	RegNumber: string;
+	/** Номер фискального накопителя */
+	FiscalNumber: string;
+	/** ИНН */
+	Inn: string;
+	/** Признак расчета, см. [справочник](#type) */
+	Type: KktReceiptType;
+	/** Наименование оператора фискальных данных */
+	Ofd: string;
+	/** URL адрес с копией чека */
+	Url: string;
+	/** URL адрес с QR кодом для проверки чека в ФНС */
+	QrCodeUrl: string;
+	/** Идентификатор транзакции */
+	TransactionId?: number;
+	/** Сумма чека */
+	Amount: number;
+	/** Дата/время выдачи чека во временной зоне UTC */
+	DateTime: string;
+	/** Номер заказа */
+	InvoiceId?: string;
+	/** Идентификатор пользователя */
+	AccountId?: string;
+	/** Состав чека */
+	Receipt: KktReceipt;
+	/** Место осуществления расчетов */
+	CalculationPlace?: string;
+	/** Имя кассира */
+	CashierName?: string;
+	/** место нахождения (установки) ккм */
+	SettlePlace?: string;
+}
+
 /** Union всех входящих webhook payload-ов. Тип определяется endpoint-ом. */
-export type AnyWebhookPayload = CheckNotificationPayload | PayNotificationPayload | FailNotificationPayload | ConfirmNotificationPayload | RefundNotificationPayload | RecurrentNotificationPayload | CancelNotificationPayload;
+export type AnyWebhookPayload = CheckNotificationPayload | PayNotificationPayload | FailNotificationPayload | ConfirmNotificationPayload | RefundNotificationPayload | RecurrentNotificationPayload | CancelNotificationPayload | ReceiptNotificationPayload;

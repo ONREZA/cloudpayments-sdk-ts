@@ -2495,7 +2495,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/Escrow/GetEscrowInfo",
-              "label": ""
+              "label": "Адрес метода:"
             }
           ],
           "params": [],
@@ -2614,7 +2614,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/test",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/test"
             }
           ],
           "params": [],
@@ -2890,7 +2890,7 @@
               "urls": [
                 {
                   "url": "https://api.cloudpayments.ru/payments/cards/post3ds",
-                  "label": ""
+                  "label": "Адрес метода: https://api.cloudpayments.ru/payments/cards/post3ds"
                 }
               ],
               "params": [
@@ -3175,7 +3175,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/payments/confirm",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/payments/confirm"
             }
           ],
           "params": [
@@ -3254,7 +3254,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/payments/void",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/payments/void"
             }
           ],
           "params": [
@@ -3311,7 +3311,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/payments/refund",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/payments/refund"
             }
           ],
           "params": [
@@ -3394,7 +3394,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/payments/cards/topup",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/payments/cards/topup"
             }
           ],
           "params": [
@@ -3608,7 +3608,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/payments/token/topup",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/payments/token/topup"
             }
           ],
           "params": [
@@ -3735,7 +3735,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/payments/alt/topup",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/payments/alt/topup"
             }
           ],
           "params": [
@@ -3910,7 +3910,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/payments/get",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/payments/get"
             }
           ],
           "params": [
@@ -3960,11 +3960,20 @@
           "anchor": "proverka-statusa-platezha",
           "title": "Проверка статуса платежа",
           "level": 2,
-          "description": "Метод поиска платежа и проверки статуса (см. [справочник](#statusy-operatsiy)).\n\n**Адрес старого метода:**\n https://api.cloudpayments.ru/payments/find\n\n**Адрес нового метода:**\n https://api.cloudpayments.ru/v2/payments/find",
+          "description": "Метод поиска платежа и проверки статуса (см. [справочник](#statusy-operatsiy)).",
           "notes": [
             "Проверка статуса платежа является избыточной и имеет смысл только в случае, если при проведении оплаты возник сбой, который привел к потере информации."
           ],
-          "urls": [],
+          "urls": [
+            {
+              "url": "https://api.cloudpayments.ru/payments/find",
+              "label": "Адрес старого метода: https://api.cloudpayments.ru/payments/find"
+            },
+            {
+              "url": "https://api.cloudpayments.ru/v2/payments/find",
+              "label": "Адрес нового метода: https://api.cloudpayments.ru/v2/payments/find"
+            }
+          ],
           "params": [
             {
               "name": "InvoiceId",
@@ -4017,7 +4026,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/payments/list",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/payments/list"
             }
           ],
           "params": [
@@ -4084,7 +4093,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/v2/payments/list",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/v2/payments/list"
             }
           ],
           "params": [
@@ -4187,7 +4196,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/chargebacks/list",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/chargebacks/list"
             }
           ],
           "params": [
@@ -4340,7 +4349,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/payments/tokens/list",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/payments/tokens/list"
             }
           ],
           "params": [
@@ -4397,7 +4406,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/subscriptions/create",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/subscriptions/create"
             }
           ],
           "params": [
@@ -4584,7 +4593,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/subscriptions/get",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/subscriptions/get"
             }
           ],
           "params": [
@@ -4639,7 +4648,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/subscriptions/find",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/subscriptions/find"
             }
           ],
           "params": [
@@ -4696,7 +4705,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/subscriptions/update",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/subscriptions/update"
             }
           ],
           "params": [
@@ -4871,7 +4880,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/subscriptions/cancel",
-              "label": ""
+              "label": "Адрес метода:"
             }
           ],
           "params": [
@@ -4929,7 +4938,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/orders/create",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/orders/create"
             }
           ],
           "params": [
@@ -5176,7 +5185,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/orders/cancel",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/orders/cancel"
             }
           ],
           "params": [
@@ -5231,7 +5240,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/site/notifications/{Type}/get",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/site/notifications/{Type}/get"
             }
           ],
           "params": [
@@ -5280,7 +5289,7 @@
           "urls": [
             {
               "url": "https://api.cloudpayments.ru/site/notifications/{Type}/update",
-              "label": ""
+              "label": "Адрес метода: https://api.cloudpayments.ru/site/notifications/{Type}/update"
             }
           ],
           "params": [
@@ -8163,7 +8172,12 @@
               "level": 3,
               "description": "https://api.cloudpayments.ru/payments/qr/tinkoffpay/link",
               "notes": [],
-              "urls": [],
+              "urls": [
+                {
+                  "url": "https://api.cloudpayments.ru/payments/qr/tinkoffpay/link",
+                  "label": "Адрес метода"
+                }
+              ],
               "params": [],
               "tables": [],
               "requestExamples": [],
@@ -8479,7 +8493,7 @@
               "urls": [
                 {
                   "url": "https://api.cloudpayments.ru/payments/qr/tinkoffpay/image",
-                  "label": ""
+                  "label": "Адрес метода https://api.cloudpayments.ru/payments/qr/tinkoffpay/image"
                 }
               ],
               "params": [],
@@ -8580,7 +8594,12 @@
               "level": 3,
               "description": "https://api.cloudpayments.ru/payments/qr/sbp/link",
               "notes": [],
-              "urls": [],
+              "urls": [
+                {
+                  "url": "https://api.cloudpayments.ru/payments/qr/sbp/link",
+                  "label": "Адрес метода"
+                }
+              ],
               "params": [],
               "tables": [],
               "requestExamples": [],
@@ -8907,7 +8926,12 @@
               "level": 3,
               "description": "https://api.cloudpayments.ru/payments/qr/sbp/image",
               "notes": [],
-              "urls": [],
+              "urls": [
+                {
+                  "url": "https://api.cloudpayments.ru/payments/qr/sbp/image",
+                  "label": "Адрес метода"
+                }
+              ],
               "params": [],
               "tables": [],
               "requestExamples": [],
@@ -8998,7 +9022,12 @@
               "level": 3,
               "description": "https://api.cloudpayments.ru/sbp/v2/banks/info",
               "notes": [],
-              "urls": [],
+              "urls": [
+                {
+                  "url": "https://api.cloudpayments.ru/sbp/v2/banks/info",
+                  "label": "Адрес метода"
+                }
+              ],
               "params": [],
               "tables": [],
               "requestExamples": [],
@@ -9497,7 +9526,12 @@
               "level": 3,
               "description": "https://api.cloudpayments.ru/payments/qr/sberpay/link",
               "notes": [],
-              "urls": [],
+              "urls": [
+                {
+                  "url": "https://api.cloudpayments.ru/payments/qr/sberpay/link",
+                  "label": "Адрес метода"
+                }
+              ],
               "params": [],
               "tables": [],
               "requestExamples": [],
@@ -9788,7 +9822,12 @@
               "level": 3,
               "description": "https://api.cloudpayments.ru/payments/qr/sberpay/image",
               "notes": [],
-              "urls": [],
+              "urls": [
+                {
+                  "url": "https://api.cloudpayments.ru/payments/qr/sberpay/image",
+                  "label": "Адрес метода"
+                }
+              ],
               "params": [],
               "tables": [],
               "requestExamples": [],

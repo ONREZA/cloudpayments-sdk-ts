@@ -10,9 +10,9 @@
 import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { Group, IR, Param, Table } from "./parse.ts";
+import { DOCS_SOURCES, type DocsSourceName } from "./docs-sources.js";
+import type { Group, IR, Param, Table } from "./parse.js";
 
-const IR_PATH = resolve(import.meta.dir, "..", "specs", "ir.json");
 const OUT_DIR = resolve(import.meta.dir, "..", "src", "_generated");
 
 const HEADER = `/**
@@ -107,9 +107,27 @@ const HANDBOOKS: HandbookSpec[] = [
 ];
 
 interface EndpointAlias {
+	source?: DocsSourceName;
+	sectionAnchor?: string;
 	anchor: string;
-	module: "payments" | "subscriptions" | "orders" | "settings";
+	module:
+		| "payments"
+		| "subscriptions"
+		| "orders"
+		| "settings"
+		| "escrow"
+		| "tPay"
+		| "sbp"
+		| "sberPay"
+		| "kkt";
 	methodName: string;
+	/** URL находится в дочернем блоке endpoint-группы. */
+	urlAnchor?: string;
+	/** Параметры находятся в другом блоке той же секции. */
+	requestGroupAnchor?: string;
+	requestAnchor?: string;
+	/** Документация содержит только JSON-пример запроса, без таблицы параметров. */
+	paramsOverride?: Param[];
 	/** Если у endpoint-а несколько URL, создаём несколько методов, выбирая URL по label-подстроке. */
 	splitByUrlLabel?: Array<{ match: string; methodName: string }>;
 	/** По-умолчанию берём url[0]. Этот индекс используется если splitByUrlLabel не задан и нужен не первый URL. */
@@ -117,6 +135,22 @@ interface EndpointAlias {
 }
 
 const ENDPOINT_ALIASES: EndpointAlias[] = [
+	// /Escrow/GetEscrowInfo
+	{
+		sectionAnchor: "bezopasnaya-sdelka",
+		anchor: "metod-dlya-polucheniya-informatsii-po-bs-dlya-oboih-tipov-sdelki-n-1-i-1-n",
+		module: "escrow",
+		methodName: "getInfo",
+		paramsOverride: [
+			{
+				name: "EscrowAccumulationIds",
+				type: "Array string",
+				required: true,
+				description: "Идентификаторы безопасных сделок",
+			},
+		],
+	},
+
 	// /test
 	{ anchor: "testovyy-metod", module: "payments", methodName: "test" },
 
@@ -156,6 +190,15 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 
 	// /payments/get, /payments/list, /payments/list/v2, /payments/claims
 	{ anchor: "prosmotr-tranzaktsii", module: "payments", methodName: "get" },
+	{
+		anchor: "proverka-statusa-platezha",
+		module: "payments",
+		methodName: "findLegacy",
+		splitByUrlLabel: [
+			{ match: "старого", methodName: "findLegacy" },
+			{ match: "нового", methodName: "find" },
+		],
+	},
 	{ anchor: "vygruzka-spiska-tranzaktsiy", module: "payments", methodName: "listByDay" },
 	{
 		anchor: "vygruzka-spiska-tranzaktsiy-za-proizvolnyy-period",
@@ -199,17 +242,161 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 		module: "settings",
 		methodName: "updateNotification",
 	},
+
+	// Альтернативные способы оплаты
+	{
+		sectionAnchor: "t-pay",
+		anchor: "poluchenie-ssylki-dlya-oplaty",
+		urlAnchor: "adres-metoda",
+		requestAnchor: "parametry-zaprosa",
+		module: "tPay",
+		methodName: "createLink",
+	},
+	{
+		sectionAnchor: "t-pay",
+		anchor: "poluchenie-qr-koda-dlya-oplaty",
+		urlAnchor: "opisanie-2",
+		requestGroupAnchor: "poluchenie-ssylki-dlya-oplaty",
+		requestAnchor: "parametry-zaprosa",
+		module: "tPay",
+		methodName: "createQrImage",
+	},
+	{
+		sectionAnchor: "sbp",
+		anchor: "sbp-poluchenie-ssylki-dlya-oplaty",
+		urlAnchor: "adres-metoda",
+		requestAnchor: "sbp-parametry-zaprosa",
+		module: "sbp",
+		methodName: "createLink",
+	},
+	{
+		sectionAnchor: "sbp",
+		anchor: "sbp-poluchenie-qr-koda-dlya-oplaty",
+		urlAnchor: "adres-metoda-2",
+		requestGroupAnchor: "sbp-poluchenie-ssylki-dlya-oplaty",
+		requestAnchor: "sbp-parametry-zaprosa",
+		module: "sbp",
+		methodName: "createQrImage",
+	},
+	{
+		sectionAnchor: "sbp",
+		anchor: "spisok-uchastnikov-sbp",
+		urlAnchor: "adres-metoda-3",
+		requestAnchor: "parametry-zaprosa-2",
+		module: "sbp",
+		methodName: "listBanks",
+	},
+	{
+		sectionAnchor: "sberpay",
+		anchor: "sberpay-poluchenie-ssylki-dlya-oplaty",
+		urlAnchor: "adres-metoda",
+		requestAnchor: "sberpay-parametry-zaprosa",
+		module: "sberPay",
+		methodName: "createLink",
+	},
+	{
+		sectionAnchor: "sberpay",
+		anchor: "sberpay-poluchenie-qr-koda-dlya-oplaty",
+		urlAnchor: "adres-metoda-2",
+		requestGroupAnchor: "sberpay-poluchenie-ssylki-dlya-oplaty",
+		requestAnchor: "sberpay-parametry-zaprosa",
+		module: "sberPay",
+		methodName: "createQrImage",
+	},
+
+	// CloudKassir /kkt/*
+	{ source: "cloudkassir", anchor: "fiskalizatsiya-kassy", module: "kkt", methodName: "fiscalize" },
+	{
+		source: "cloudkassir",
+		anchor: "formirovanie-kassovogo-cheka",
+		module: "kkt",
+		methodName: "submitReceipt",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "zapros-statusa-cheka",
+		module: "kkt",
+		methodName: "getReceiptStatus",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "poluchenie-dannyh-cheka",
+		module: "kkt",
+		methodName: "getReceipt",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "proverka-koda-markirovki",
+		module: "kkt",
+		methodName: "validateMarkCode",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "massovaya-proverka-kodov-markirovki",
+		module: "kkt",
+		methodName: "validateMarkCodes",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "formirovanie-cheka-korrektsii",
+		module: "kkt",
+		methodName: "submitCorrectionReceipt",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "zapros-statusa-cheka-korrektsii",
+		module: "kkt",
+		methodName: "getCorrectionReceiptStatus",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "poluchenie-dannyh-cheka-korrektsii",
+		module: "kkt",
+		methodName: "getCorrectionReceipt",
+		paramsOverride: [
+			{ name: "Id", type: "Строка", required: true, description: "Идентификатор чека" },
+		],
+	},
+	{
+		source: "cloudkassir",
+		anchor: "izmenenie-sostoyaniya-kassy",
+		module: "kkt",
+		methodName: "updateCashRegisterState",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "poluchenie-dannyh-kassy",
+		module: "kkt",
+		methodName: "getCashRegisterState",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "preduprezhdeniya-po-kassam",
+		module: "kkt",
+		methodName: "listCashRegisterWarnings",
+	},
 ];
 
-/** anchor из #uvedomleniya раздела → идентификатор payload-типа */
+/** anchor из раздела уведомлений → идентификатор payload-типа */
 const WEBHOOK_PAYLOADS = [
-	{ anchor: "check", type: "Check", name: "CheckNotificationPayload" },
-	{ anchor: "pay", type: "Pay", name: "PayNotificationPayload" },
-	{ anchor: "fail", type: "Fail", name: "FailNotificationPayload" },
-	{ anchor: "confirm", type: "Confirm", name: "ConfirmNotificationPayload" },
-	{ anchor: "refund", type: "Refund", name: "RefundNotificationPayload" },
-	{ anchor: "recurrent", type: "Recurrent", name: "RecurrentNotificationPayload" },
-	{ anchor: "cancel", type: "Cancel", name: "CancelNotificationPayload" },
+	{ source: "cloudpayments", anchor: "check", type: "Check", name: "CheckNotificationPayload" },
+	{ source: "cloudpayments", anchor: "pay", type: "Pay", name: "PayNotificationPayload" },
+	{ source: "cloudpayments", anchor: "fail", type: "Fail", name: "FailNotificationPayload" },
+	{
+		source: "cloudpayments",
+		anchor: "confirm",
+		type: "Confirm",
+		name: "ConfirmNotificationPayload",
+	},
+	{ source: "cloudpayments", anchor: "refund", type: "Refund", name: "RefundNotificationPayload" },
+	{
+		source: "cloudpayments",
+		anchor: "recurrent",
+		type: "Recurrent",
+		name: "RecurrentNotificationPayload",
+	},
+	{ source: "cloudpayments", anchor: "cancel", type: "Cancel", name: "CancelNotificationPayload" },
+	{ source: "cloudkassir", anchor: "receipt", type: "Receipt", name: "ReceiptNotificationPayload" },
 ] as const;
 
 const BASE_URL_PROD = "https://api.cloudpayments.ru";
@@ -217,16 +404,25 @@ const BASE_URL_PROD = "https://api.cloudpayments.ru";
 const BASE_URL_EU = "https://api.cloudpayments.eu";
 const BASE_URL_KZ = "https://api.cp.kz";
 const DOCS_URL = "https://developers.cloudpayments.ru";
+const KKT_DOCS_URL = "https://developers.cloudkassir.ru";
 
 /* ──────────────────────── Helpers: IR lookup ──────────────────────── */
 
-async function loadIR(): Promise<IR> {
-	const raw = await Bun.file(IR_PATH).text();
-	return JSON.parse(raw) as IR;
+type IRBySource = Record<DocsSourceName, IR>;
+
+async function loadIRs(): Promise<IRBySource> {
+	const entries = await Promise.all(
+		Object.values(DOCS_SOURCES).map(async (source) => {
+			const raw = await Bun.file(source.irPath).text();
+			return [source.name, JSON.parse(raw) as IR] as const;
+		}),
+	);
+	return Object.fromEntries(entries) as IRBySource;
 }
 
-function findGroupDeep(ir: IR, anchor: string): Group | null {
+function findGroupDeep(ir: IR, anchor: string, sectionAnchor?: string): Group | null {
 	for (const s of ir.sections) {
+		if (sectionAnchor && s.anchor !== sectionAnchor) continue;
 		for (const g of s.groups) {
 			if (g.anchor === anchor) return g;
 			for (const sg of g.subgroups) if (sg.anchor === anchor) return sg;
@@ -242,20 +438,25 @@ function tsTypeFor(param: Param): string {
 	if (!t) return "unknown";
 	// date-format strings — "yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss", ISO-шаблоны etc. → string
 	if (/^y{2,4}[-./]/.test(t) || /datetime/.test(t) || /^date\b/.test(t)) return "string";
-	if (/^string/.test(t) || /^guid\b/.test(t) || /^url\b/.test(t)) return "string";
-	if (/^(long|int|integer|decimal|float|double|number)/.test(t)) return "number";
+	if (/^string/.test(t) || /^guid\b/.test(t) || /^url\b/.test(t) || /^строк/u.test(t))
+		return "string";
+	if (/^(long|int|integer|decimal|float|double|number)/.test(t) || /^(число|целое число)/u.test(t))
+		return "number";
 	if (/^bit\b/.test(t)) return "0 | 1";
-	if (/^(bool|boolean)/.test(t)) return "boolean";
-	if (/^json/.test(t)) return "Record<string, unknown>";
+	if (/^(bool|boolean)/.test(t) || /^булев/u.test(t)) return "boolean";
+	if (/^(array|list).*string/.test(t) || /^массив строк/u.test(t)) return "string[]";
+	if (/^json/.test(t)) return inferObjectType(param);
 	if (/^object/.test(t)) return inferObjectType(param);
-	if (/^(array|list)/.test(t)) return "unknown[]";
+	if (/^(array|list)/.test(t) || /^массив/u.test(t)) return "unknown[]";
 	return "unknown";
 }
 
 function inferObjectType(param: Param): string {
 	const name = param.name.toLowerCase();
 	if (name === "payer") return "Payer";
-	if (name === "receipt" || name === "inn") return "Receipt";
+	if (name === "receipt") return "KktReceipt";
+	if (name === "customerreceipt") return "KktReceipt";
+	if (name === "correctionreceiptdata") return "KktCorrectionReceiptData";
 	if (name === "cloudpayments") return "CloudPaymentsMeta";
 	return "Record<string, unknown>";
 }
@@ -284,7 +485,7 @@ function fieldName(name: string): string {
 
 /* ──────────────────────── meta.ts ──────────────────────── */
 
-function writeMeta(ir: IR): string {
+function writeMeta(irs: IRBySource): string {
 	return `${HEADER}
 import packageMetadata from "../../package.json" with { type: "json" };
 
@@ -295,8 +496,10 @@ export const CP_BASE_URL = ${JSON.stringify(BASE_URL_PROD)} as const;
 export const CP_BASE_URL_EU = ${JSON.stringify(BASE_URL_EU)} as const;
 export const CP_BASE_URL_KZ = ${JSON.stringify(BASE_URL_KZ)} as const;
 export const CP_DOCS_URL = ${JSON.stringify(DOCS_URL)} as const;
+export const CLOUDKASSIR_DOCS_URL = ${JSON.stringify(KKT_DOCS_URL)} as const;
 
-export const CP_SDK_DOCS_SHA256 = ${JSON.stringify(ir.source.htmlSha256)} as const;
+export const CP_SDK_DOCS_SHA256 = ${JSON.stringify(irs.cloudpayments.source.htmlSha256)} as const;
+export const CLOUDKASSIR_SDK_DOCS_SHA256 = ${JSON.stringify(irs.cloudkassir.source.htmlSha256)} as const;
 `;
 }
 
@@ -401,52 +604,106 @@ function pascalToScreamingSnake(pascal: string): string {
 interface ResolvedEndpoint {
 	alias: EndpointAlias;
 	group: Group;
+	params: Param[];
+	docsUrl: string;
 	urls: { url: string; label: string; methodName: string }[];
 }
 
-function resolveEndpoints(ir: IR): ResolvedEndpoint[] {
+function resolveEndpoints(irs: IRBySource): ResolvedEndpoint[] {
 	const out: ResolvedEndpoint[] = [];
 	for (const alias of ENDPOINT_ALIASES) {
-		const group = findGroupDeep(ir, alias.anchor);
+		const sourceName = alias.source ?? "cloudpayments";
+		const ir = irs[sourceName];
+		const group = findGroupDeep(ir, alias.anchor, alias.sectionAnchor);
 		if (!group) {
-			console.warn(`! endpoint alias not found in IR: ${alias.anchor}`);
-			continue;
+			throw new Error(`Endpoint alias not found in ${sourceName} IR: ${alias.anchor}`);
 		}
-		if (group.urls.length === 0) {
-			console.warn(`! endpoint ${alias.anchor} has no URLs`);
-			continue;
+		const urlGroup = alias.urlAnchor
+			? group.subgroups.find((candidate) => candidate.anchor === alias.urlAnchor)
+			: group;
+		if (!urlGroup) {
+			throw new Error(`Endpoint URL block not found for ${alias.anchor}: ${alias.urlAnchor}`);
 		}
+		const requestParent = alias.requestGroupAnchor
+			? findGroupDeep(ir, alias.requestGroupAnchor, alias.sectionAnchor)
+			: group;
+		if (!requestParent) {
+			throw new Error(`Endpoint request group not found for ${alias.anchor}`);
+		}
+		const requestGroup = alias.requestAnchor
+			? requestParent.subgroups.find((candidate) => candidate.anchor === alias.requestAnchor)
+			: requestParent;
+		if (!requestGroup) {
+			throw new Error(
+				`Endpoint request block not found for ${alias.anchor}: ${alias.requestAnchor}`,
+			);
+		}
+		const params = alias.paramsOverride ?? requestGroup.params;
+		if (urlGroup.urls.length === 0) {
+			throw new Error(`Endpoint ${alias.anchor} has no URLs`);
+		}
+		const docsUrl = sourceName === "cloudkassir" ? KKT_DOCS_URL : DOCS_URL;
 
 		if (alias.splitByUrlLabel) {
 			const resolved: ResolvedEndpoint["urls"] = [];
 			for (const split of alias.splitByUrlLabel) {
-				const u = group.urls.find((x) => x.label.toLowerCase().includes(split.match.toLowerCase()));
+				const u = urlGroup.urls.find((x) =>
+					x.label.toLowerCase().includes(split.match.toLowerCase()),
+				);
 				if (!u) {
-					console.warn(`! split not matched for ${alias.anchor}: ${split.match}`);
-					continue;
+					throw new Error(`Endpoint URL split not matched for ${alias.anchor}: ${split.match}`);
 				}
 				resolved.push({ url: u.url, label: u.label, methodName: split.methodName });
 			}
-			out.push({ alias, group, urls: resolved });
+			out.push({ alias, group, params, docsUrl, urls: resolved });
 		} else {
 			const idx = alias.urlIndex ?? 0;
-			const u = group.urls[idx];
-			if (!u) continue;
+			const u = urlGroup.urls[idx];
+			if (!u) throw new Error(`Endpoint URL index ${idx} not found for ${alias.anchor}`);
 			out.push({
 				alias,
 				group,
+				params,
+				docsUrl,
 				urls: [{ url: u.url, label: u.label, methodName: alias.methodName }],
 			});
 		}
 	}
+	assertEndpointCoverage(irs, out);
 	return out;
 }
 
-function writeEndpoints(ir: IR): string {
-	const endpoints = resolveEndpoints(ir);
+function assertEndpointCoverage(irs: IRBySource, endpoints: ResolvedEndpoint[]): void {
+	const covered = new Set(
+		endpoints.flatMap((endpoint) => endpoint.urls.map((url) => endpointPath(url.url))),
+	);
+	const missing: string[] = [];
+	for (const [sourceName, ir] of Object.entries(irs) as Array<[DocsSourceName, IR]>) {
+		for (const section of ir.sections) {
+			for (const group of section.groups) {
+				for (const candidate of [group, ...group.subgroups]) {
+					for (const url of candidate.urls) {
+						if (new URL(url.url).hostname !== "api.cloudpayments.ru") continue;
+						if (!covered.has(endpointPath(url.url))) {
+							missing.push(`${sourceName}:${section.anchor}:${candidate.anchor} -> ${url.url}`);
+						}
+					}
+				}
+			}
+		}
+	}
+	if (missing.length > 0) {
+		throw new Error(`Official API endpoints are not exposed by the SDK:\n${missing.join("\n")}`);
+	}
+}
+
+function writeEndpoints(irs: IRBySource): string {
+	const endpoints = resolveEndpoints(irs);
 	const parts: string[] = [HEADER];
-	parts.push(`import type { Currency, CultureName } from "./handbooks.js";`);
-	parts.push(`import type { Payer, Receipt, CloudPaymentsMeta } from "./shared.js";\n`);
+	parts.push(`import type { Currency, CultureName, FiscalDataOperator } from "./handbooks.js";`);
+	parts.push(
+		`import type { Payer, CloudPaymentsMeta, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem } from "../models.js";\n`,
+	);
 
 	for (const ep of endpoints) {
 		parts.push(renderEndpointBlock(ep));
@@ -462,7 +719,7 @@ function renderEndpointBlock(ep: ResolvedEndpoint): string {
 		const prefix = pascal(ep.alias.module);
 		const typeName = `${prefix}${pascal(url.methodName)}Request`;
 		const urlConst = `${pascalToScreamingSnake(ep.alias.module)}_${pascalToScreamingSnake(url.methodName)}_URL`;
-		out.push(renderRequestType(typeName, ep.group));
+		out.push(renderRequestType(typeName, ep));
 		out.push(`export const ${urlConst} = ${JSON.stringify(endpointPath(url.url))} as const;\n`);
 	}
 	return out.join("\n");
@@ -473,22 +730,23 @@ function endpointPath(rawUrl: string): string {
 	return `${decodeURI(url.pathname)}${url.search}`;
 }
 
-function renderRequestType(typeName: string, group: Group): string {
+function renderRequestType(typeName: string, endpoint: ResolvedEndpoint): string {
+	const { group, params } = endpoint;
 	const out: string[] = [];
 	out.push(
 		jsDoc([
 			group.title,
 			group.description.split("\n")[0] ?? "",
-			`@see ${DOCS_URL}/#${group.anchor}`,
+			`@see ${endpoint.docsUrl}/#${group.anchor}`,
 		]),
 	);
-	if (group.params.length === 0) {
+	if (params.length === 0) {
 		out.push(`export type ${typeName} = Record<string, never>;\n`);
 		return out.join("");
 	}
 	out.push(`export interface ${typeName} {\n`);
-	for (const p of group.params) {
-		const tsType = tsTypeForNamed(p);
+	for (const p of params) {
+		const tsType = tsTypeForNamed(p, endpoint.alias);
 		const optionalFlag = p.required ? "" : "?";
 		const desc = cleanDescription(p.description);
 		if (desc) out.push(`\t/** ${escapeJsDoc(desc)} */\n`);
@@ -498,11 +756,23 @@ function renderRequestType(typeName: string, group: Group): string {
 	return out.join("");
 }
 
-function tsTypeForNamed(param: Param): string {
+function tsTypeForNamed(param: Param, alias?: EndpointAlias): string {
 	const name = param.name.toLowerCase();
 	// Spec-осведомлённые сужения типов
 	if (name === "currency") return "Currency";
 	if (name === "culturename" || name === "culture") return "CultureName";
+	if (name === "customerreceipt") return "KktReceipt";
+	if (name === "correctionreceiptdata") return "KktCorrectionReceiptData";
+	if (alias?.module === "kkt" && name === "type") return "KktReceiptType";
+	if (alias?.module === "kkt" && name === "taxationsystem") return "KktTaxationSystem[]";
+	if (alias?.module === "kkt" && name === "ofd") return "FiscalDataOperator";
+	if (alias?.module === "tPay" && name === "scheme") return "0 | 1";
+	if (alias?.module === "sbp" && name === "scheme") return '"charge"';
+	if (alias?.module === "sberPay" && name === "scheme") return '"charge" | "auth"';
+	if (["tPay", "sbp", "sberPay"].includes(alias?.module ?? "") && name === "device") {
+		return '"MobileApp" | "DesktopWeb" | "Mobile"';
+	}
+	if (name === "ttlminutes") return "number | null";
 	return tsTypeFor(param);
 }
 
@@ -542,20 +812,21 @@ function renderEndpointRegistry(endpoints: ResolvedEndpoint[]): string {
 
 /* ──────────────────────── webhook-payloads.ts ──────────────────────── */
 
-function writeWebhookPayloads(ir: IR): string {
+function writeWebhookPayloads(irs: IRBySource): string {
 	const parts: string[] = [HEADER];
 	parts.push(
 		`import type { OperationType, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";\n`,
 	);
-	parts.push(renderWebhookFieldSchemas(ir));
+	parts.push(`import type { KktReceipt, KktReceiptType } from "../models.js";\n`);
+	parts.push(renderWebhookFieldSchemas(irs));
 
 	for (const spec of WEBHOOK_PAYLOADS) {
-		const g = findGroupDeep(ir, spec.anchor);
+		const g = findGroupDeep(irs[spec.source], spec.anchor);
 		if (!g) {
-			console.warn(`! webhook payload not found: ${spec.anchor}`);
-			continue;
+			throw new Error(`Webhook payload not found in ${spec.source} IR: ${spec.anchor}`);
 		}
-		parts.push(renderWebhookPayload(spec.name, spec.type, g));
+		const docsUrl = spec.source === "cloudkassir" ? KKT_DOCS_URL : DOCS_URL;
+		parts.push(renderWebhookPayload(spec.name, spec.type, g, docsUrl));
 	}
 
 	parts.push(renderWebhookUnion());
@@ -569,29 +840,33 @@ interface WebhookFieldSchema {
 	optional: boolean;
 }
 
-function renderWebhookFieldSchemas(ir: IR): string {
+function renderWebhookFieldSchemas(irs: IRBySource): string {
 	const fields = new Map<string, WebhookFieldSchema>();
+	const byType: string[] = [];
 	for (const spec of WEBHOOK_PAYLOADS) {
-		const group = findGroupDeep(ir, spec.anchor);
+		const group = findGroupDeep(irs[spec.source], spec.anchor);
 		if (!group) continue;
+		const ownFields = new Map<string, WebhookFieldSchema>();
 		for (const param of group.params) {
 			const kind = webhookFieldKind(tsTypeForWebhook(param, spec.type));
 			const optional = !param.required;
+			ownFields.set(param.name, { kind, optional });
 			const existing = fields.get(param.name);
 			if (existing && existing.kind !== kind) {
 				throw new Error(
 					`Webhook field ${param.name} has conflicting runtime kinds: ${existing.kind} and ${kind}`,
 				);
 			}
-			if (existing && kind !== "string" && existing.optional !== optional) {
-				throw new Error(
-					`Webhook field ${param.name} has conflicting optionality across notification types`,
-				);
-			}
-			if (!existing) fields.set(param.name, { kind, optional });
+			if (existing) existing.optional &&= optional;
+			else fields.set(param.name, { kind, optional });
 		}
+		byType.push(`\t${spec.type}: ${renderWebhookSchemaObject(ownFields)},`);
 	}
 
+	return `${jsDoc(["Runtime coercion schema для form-urlencoded webhook payload-ов."])}export const WEBHOOK_FIELD_SCHEMAS = ${renderWebhookSchemaObject(fields)} as const;\n\n${jsDoc(["Runtime coercion schemas для конкретных типов webhook payload-ов."])}export const WEBHOOK_FIELD_SCHEMAS_BY_TYPE = {\n${byType.join("\n")}\n} as const;\n`;
+}
+
+function renderWebhookSchemaObject(fields: Map<string, WebhookFieldSchema>): string {
 	const entries = [...fields]
 		.filter(([, field]) => field.kind !== "string")
 		.sort(([left], [right]) => left.localeCompare(right))
@@ -600,23 +875,30 @@ function renderWebhookFieldSchemas(ir: IR): string {
 				`\t${fieldName(name)}: { kind: ${JSON.stringify(field.kind)}, optional: ${field.optional} },`,
 		)
 		.join("\n");
-	return `${jsDoc(["Runtime coercion schema для form-urlencoded webhook payload-ов."])}export const WEBHOOK_FIELD_SCHEMAS = {\n${entries}\n} as const;\n`;
+	return `{\n${entries}\n}`;
 }
 
 function webhookFieldKind(tsType: string): WebhookFieldKind {
 	if (tsType === "number" || tsType === "0 | 1") return "number";
 	if (tsType === "boolean") return "boolean";
-	if (tsType === "Record<string, unknown>" || tsType === "unknown[]") return "json";
+	if (tsType === "Record<string, unknown>" || tsType === "unknown[]" || tsType === "KktReceipt") {
+		return "json";
+	}
 	return "string";
 }
 
-function renderWebhookPayload(typeName: string, notificationType: string, group: Group): string {
+function renderWebhookPayload(
+	typeName: string,
+	notificationType: string,
+	group: Group,
+	docsUrl: string,
+): string {
 	const out: string[] = [];
 	out.push(
 		jsDoc([
 			`Payload уведомления ${notificationType}.`,
 			group.description.split("\n")[0] ?? "",
-			`@see ${DOCS_URL}/#${group.anchor}`,
+			`@see ${docsUrl}/#${group.anchor}`,
 		]),
 	);
 	out.push(`export interface ${typeName} {\n`);
@@ -633,11 +915,18 @@ function renderWebhookPayload(typeName: string, notificationType: string, group:
 
 function tsTypeForWebhook(param: Param, notificationType: string): string {
 	const name = param.name.toLowerCase();
+	// CloudKassir labels these identifiers as integers, but they can contain
+	// leading zeroes and must survive form parsing byte-for-byte.
+	if (notificationType === "Receipt" && (name === "devicenumber" || name === "inn")) {
+		return "string";
+	}
 	if (name === "currency" || name === "paymentcurrency") return "Currency";
 	if (name === "culturename") return "CultureName";
 	if (name === "status" && notificationType === "Recurrent") return "SubscriptionStatus";
 	if (name === "status") return "TransactionStatus";
 	if (name === "operationtype") return "OperationType";
+	if (notificationType === "Receipt" && name === "type") return "KktReceiptType";
+	if (notificationType === "Receipt" && name === "receipt") return "KktReceipt";
 	return tsTypeFor(param);
 }
 
@@ -649,79 +938,6 @@ function renderWebhookUnion(): string {
 	return out.join("");
 }
 
-/* ──────────────────────── shared shapes — кандидаты в src/modules/ ──────────────────────── */
-
-/** Заголовок + заглушка для общих типов, которые пишутся руками. */
-function writeSharedTypesStub(): string {
-	return `${HEADER}
-/**
- * Вложенные объекты, которые в документации CloudPayments передаются как "Object"
- * без формального schema. Описаны вручную исходя из текста описаний и примеров.
- * Эти типы используют Request-типы из endpoints.ts — не удаляйте и не переименовывайте.
- */
-
-/** Плательщик (Payer object в charge/auth/payout/...) */
-export interface Payer {
-	FirstName?: string;
-	LastName?: string;
-	MiddleName?: string;
-	/** Дата рождения, YYYY-MM-DD. */
-	Birth?: string;
-	Address?: string;
-	Street?: string;
-	City?: string;
-	Country?: string;
-	/** Телефон, только цифры, формат «+71234567890». */
-	Phone?: string;
-	Postcode?: string;
-}
-
-/** Онлайн-чек 54-ФЗ (передаётся в cloudpayments.CustomerReceipt). */
-export interface Receipt {
-	Items: ReceiptItem[];
-	taxationSystem?: number;
-	email?: string;
-	phone?: string;
-	isBso?: boolean;
-	AgentSign?: string | null;
-	amounts?: ReceiptAmounts;
-}
-
-export interface ReceiptItem {
-	label: string;
-	price: number;
-	quantity: number;
-	amount: number;
-	vat?: number | null;
-	method: number;
-	object: number;
-	measurementUnit?: string;
-	agentSign?: string | null;
-}
-
-export interface ReceiptAmounts {
-	electronic: number;
-	advancePayment?: number;
-	credit?: number;
-	provision?: number;
-}
-
-/** cloudpayments-namespace внутри JsonData — инструкции для формирования подписки/чека. */
-export interface CloudPaymentsMeta {
-	CustomerReceipt?: Receipt;
-	recurrent?: {
-		interval: "Day" | "Week" | "Month";
-		period: number;
-		customerReceipt?: Receipt;
-		amount?: number;
-		startDate?: string;
-		maxPeriods?: number | null;
-	};
-	ShouldAuthenticate3DS?: boolean;
-}
-`;
-}
-
 /* ──────────────────────── index.ts ──────────────────────── */
 
 function writeIndex(): string {
@@ -730,25 +946,27 @@ export * from "./meta.js";
 export * from "./handbooks.js";
 export * from "./endpoints.js";
 export * from "./webhook-payloads.js";
-export * from "./shared.js";
 `;
 }
 
 /* ──────────────────────── Entry ──────────────────────── */
 
 async function main() {
-	if (!existsSync(IR_PATH)) {
-		console.error("✗ specs/ir.json not found. Run `bun run docs:parse` first.");
-		process.exit(1);
+	for (const source of Object.values(DOCS_SOURCES)) {
+		if (!existsSync(source.irPath)) {
+			console.error(
+				`✗ ${source.irPath} not found. Run \`bun run docs:parse ${source.name}\` first.`,
+			);
+			process.exit(1);
+		}
 	}
-	const ir = await loadIR();
+	const irs = await loadIRs();
 
 	const files: Array<[string, string]> = [
-		["meta.ts", writeMeta(ir)],
-		["handbooks.ts", writeHandbooks(ir)],
-		["endpoints.ts", writeEndpoints(ir)],
-		["webhook-payloads.ts", writeWebhookPayloads(ir)],
-		["shared.ts", writeSharedTypesStub()],
+		["meta.ts", writeMeta(irs)],
+		["handbooks.ts", writeHandbooks(irs.cloudpayments)],
+		["endpoints.ts", writeEndpoints(irs)],
+		["webhook-payloads.ts", writeWebhookPayloads(irs)],
 		["index.ts", writeIndex()],
 	];
 

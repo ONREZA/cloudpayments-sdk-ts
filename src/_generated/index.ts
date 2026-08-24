@@ -7,4 +7,3 @@ export * from "./meta.js";
 export * from "./handbooks.js";
 export * from "./endpoints.js";
 export * from "./webhook-payloads.js";
-export * from "./shared.js";

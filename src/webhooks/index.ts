@@ -1,8 +1,8 @@
 /**
  * Верификация входящих webhook-уведомлений CloudPayments.
  *
- * CP отправляет уведомления (check/pay/fail/confirm/refund/recurrent/cancel) POST-ом
- * с заголовками:
+ * CloudPayments и CloudKassir отправляют уведомления
+ * (check/pay/fail/confirm/refund/recurrent/cancel/receipt) POST-ом с заголовками:
  *   - Content-HMAC         — HMAC-SHA256(rawBody) в base64 при URL-encoded теле
  *   - X-Content-HMAC       — то же, но по decoded значению
  *
@@ -21,10 +21,14 @@ import type {
 	ConfirmNotificationPayload,
 	FailNotificationPayload,
 	PayNotificationPayload,
+	ReceiptNotificationPayload,
 	RecurrentNotificationPayload,
 	RefundNotificationPayload,
 } from "../_generated/webhook-payloads.js";
-import { WEBHOOK_FIELD_SCHEMAS } from "../_generated/webhook-payloads.js";
+import {
+	WEBHOOK_FIELD_SCHEMAS,
+	WEBHOOK_FIELD_SCHEMAS_BY_TYPE,
+} from "../_generated/webhook-payloads.js";
 
 export type {
 	AnyWebhookPayload,
@@ -33,6 +37,7 @@ export type {
 	ConfirmNotificationPayload,
 	FailNotificationPayload,
 	PayNotificationPayload,
+	ReceiptNotificationPayload,
 	RecurrentNotificationPayload,
 	RefundNotificationPayload,
 } from "../_generated/webhook-payloads.js";
@@ -94,6 +99,13 @@ export interface VerifyWebhookInput {
  * - Константное время сравнения подписи (timing-safe).
  */
 export async function verifyWebhook<T = AnyWebhookPayload>(input: VerifyWebhookInput): Promise<T> {
+	return verifyWebhookWithSchema<T>(input, WEBHOOK_FIELD_SCHEMAS);
+}
+
+async function verifyWebhookWithSchema<T>(
+	input: VerifyWebhookInput,
+	fieldSchemas: Readonly<Record<string, WebhookFieldSchema>>,
+): Promise<T> {
 	if (!input.signature) {
 		throw new WebhookVerificationError(
 			"Missing signature header",
@@ -124,7 +136,7 @@ export async function verifyWebhook<T = AnyWebhookPayload>(input: VerifyWebhookI
 			throw bodyParsingError("Body is not valid JSON");
 		}
 	}
-	return parseFormUrlEncoded(bodyStr) as T;
+	return parseFormUrlEncoded(bodyStr, fieldSchemas) as T;
 }
 
 /**
@@ -140,18 +152,21 @@ export function checkResponse(code: 0 | 10 | 11 | 12 | 13 | 20 = 0): { code: typ
  * явные имена методов без generic-параметра — не надо помнить как называется тип.
  */
 export const verifyCheckWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhook<CheckNotificationPayload>(i);
-export const verifyPayWebhook = (i: VerifyWebhookInput) => verifyWebhook<PayNotificationPayload>(i);
+	verifyWebhookWithSchema<CheckNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Check);
+export const verifyPayWebhook = (i: VerifyWebhookInput) =>
+	verifyWebhookWithSchema<PayNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Pay);
 export const verifyFailWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhook<FailNotificationPayload>(i);
+	verifyWebhookWithSchema<FailNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Fail);
 export const verifyConfirmWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhook<ConfirmNotificationPayload>(i);
+	verifyWebhookWithSchema<ConfirmNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Confirm);
 export const verifyRefundWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhook<RefundNotificationPayload>(i);
+	verifyWebhookWithSchema<RefundNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Refund);
 export const verifyRecurrentWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhook<RecurrentNotificationPayload>(i);
+	verifyWebhookWithSchema<RecurrentNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Recurrent);
 export const verifyCancelWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhook<CancelNotificationPayload>(i);
+	verifyWebhookWithSchema<CancelNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Cancel);
+export const verifyReceiptWebhook = (i: VerifyWebhookInput) =>
+	verifyWebhookWithSchema<ReceiptNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Receipt);
 
 /* ───────────────────── Internals ───────────────────── */
 
@@ -200,11 +215,14 @@ interface WebhookFieldSchema {
 	readonly optional: boolean;
 }
 
-function parseFormUrlEncoded(body: string): Record<string, unknown> {
+function parseFormUrlEncoded(
+	body: string,
+	fieldSchemas: Readonly<Record<string, WebhookFieldSchema>>,
+): Record<string, unknown> {
 	const params = new URLSearchParams(body);
 	const result: Record<string, unknown> = {};
 	for (const [key, rawVal] of params) {
-		const val = parseFormValue(key, rawVal);
+		const val = parseFormValue(key, rawVal, fieldSchemas);
 		if (val === OMIT_FORM_FIELD) continue;
 		if (key in result) {
 			const existing = result[key];
@@ -217,8 +235,12 @@ function parseFormUrlEncoded(body: string): Record<string, unknown> {
 	return result;
 }
 
-function parseFormValue(key: string, value: string): unknown {
-	const fieldSchema = (WEBHOOK_FIELD_SCHEMAS as Partial<Record<string, WebhookFieldSchema>>)[key];
+function parseFormValue(
+	key: string,
+	value: string,
+	fieldSchemas: Readonly<Record<string, WebhookFieldSchema>>,
+): unknown {
+	const fieldSchema = fieldSchemas[key];
 	if (fieldSchema?.kind === "number") {
 		if (value === "" && fieldSchema.optional) return OMIT_FORM_FIELD;
 		if (value.trim() === "") {

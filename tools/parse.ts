@@ -2,9 +2,9 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { copyFile, readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import { type CheerioAPI, load } from "cheerio";
 import type { AnyNode, Element } from "domhandler";
+import { getDocsSource } from "./docs-sources.js";
 
 /* ───────────────── IR types ───────────────── */
 
@@ -65,10 +65,11 @@ export interface CodeBlock {
 
 /* ───────────────── Paths ───────────────── */
 
-const RAW_PATH = resolve(import.meta.dir, "..", "specs", "raw.html");
-const IR_PATH = resolve(import.meta.dir, "..", "specs", "ir.json");
-const IR_PREV_PATH = resolve(import.meta.dir, "..", "specs", "ir.prev.json");
-const DOCS_URL = "https://developers.cloudpayments.ru/";
+const source = getDocsSource(process.argv[2]);
+const RAW_PATH = source.rawPath;
+const IR_PATH = source.irPath;
+const IR_PREV_PATH = source.previousIrPath;
+const DOCS_URL = source.url;
 
 /* ───────────────── HTML → Markdown ───────────────── */
 
@@ -203,7 +204,7 @@ function extractDescription($: CheerioAPI, els: Element[]): string {
 }
 
 const STRUCTURAL_MARKER_RE =
-	/^(Адрес(а)? метода|Параметры запроса|Пример запроса|Пример ответа)(?=[\s:.]|$)/iu;
+	/^(Адрес(?:а| старого| нового)? метода|Параметры запроса|Пример запроса|Пример ответа)(?=[\s:.]|$)/iu;
 
 function isStructuralMarker($: CheerioAPI, el: Element): boolean {
 	if (el.tagName.toLowerCase() !== "p") return false;
@@ -231,14 +232,21 @@ function extractAsides($: CheerioAPI, els: Element[]): string[] {
  * URL-блок: <p> с маркером "Адрес(а) метода". Следующий узел — <p> или текст с URL'ами.
  * Возвращает распарсенные URL-ы с лейблами.
  */
-function extractUrls($: CheerioAPI, els: Element[]): Url[] {
+function extractUrls($: CheerioAPI, els: Element[], title: string): Url[] {
 	const urls: Url[] = [];
+	if (/^Адрес(?:а| старого| нового)? метода$/iu.test(title.trim())) {
+		for (const el of els) {
+			for (const match of innerText($, el).matchAll(/https?:\/\/\S+/g)) {
+				urls.push({ url: match[0].replace(/[.,;]$/, ""), label: title });
+			}
+		}
+	}
 	for (let i = 0; i < els.length; i++) {
 		const el = els[i];
 		if (!el) continue;
 		if (el.tagName.toLowerCase() !== "p") continue;
 		const txt = innerText($, el);
-		if (!/^Адрес(а)? метода/iu.test(txt)) continue;
+		if (!/^Адрес(?:а| старого| нового)? метода/iu.test(txt)) continue;
 
 		// Ищем URL-ы в этом <p> (они идут после <br>), и в следующем <p>, если он не маркер.
 		const candidates: Element[] = [el];
@@ -252,12 +260,13 @@ function extractUrls($: CheerioAPI, els: Element[]): Url[] {
 			const lines = splitByBr(html);
 			for (const line of lines) {
 				const parsed = parseUrlLine($, line);
-				if (parsed) urls.push(parsed);
+				if (parsed) urls.push({ ...parsed, label: parsed.label || txt });
 			}
 		}
-		break; // только первый "Адрес метода" блок
 	}
-	return urls;
+	return urls.filter(
+		(url, index) => urls.findIndex((candidate) => candidate.url === url.url) === index,
+	);
 }
 
 function splitByBr(html: string): string[] {
@@ -544,7 +553,7 @@ function buildGroup(block: HeadingBlock, $: CheerioAPI): Group {
 		level: block.tag === "h2" ? 2 : 3,
 		description: extractDescription($, block.elements),
 		notes: extractAsides($, block.elements),
-		urls: extractUrls($, block.elements),
+		urls: extractUrls($, block.elements, block.title),
 		params: extractParams($, block.elements),
 		tables: extractAllTables($, block.elements),
 		requestExamples,
@@ -558,14 +567,14 @@ function buildGroup(block: HeadingBlock, $: CheerioAPI): Group {
 
 async function main() {
 	if (!existsSync(RAW_PATH)) {
-		console.error("✗ specs/raw.html not found. Run `bun run docs:scrape` first.");
+		console.error(`✗ ${RAW_PATH} not found. Run \`bun run docs:scrape ${source.name}\` first.`);
 		process.exit(1);
 	}
 
 	const html = await readFile(RAW_PATH, "utf8");
 	const htmlSha256 = createHash("sha256").update(html).digest("hex");
 
-	console.log(`→ Parsing specs/raw.html (${Math.round(html.length / 1024)}KB)`);
+	console.log(`→ Parsing ${source.label} docs (${Math.round(html.length / 1024)}KB)`);
 
 	const $ = load(html);
 	const blocks = walkToHeadingBlocks($);
@@ -600,7 +609,7 @@ async function main() {
 		await copyFile(IR_PATH, IR_PREV_PATH);
 	}
 	await writeFile(IR_PATH, `${JSON.stringify(ir, null, 2)}\n`);
-	console.log("✓ Wrote specs/ir.json");
+	console.log(`✓ Wrote ${IR_PATH}`);
 }
 
 await main();

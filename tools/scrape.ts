@@ -1,12 +1,14 @@
 #!/usr/bin/env bun
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { copyFile, readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import { getDocsSource } from "./docs-sources.js";
 
-const DOCS_URL = process.env.CP_DOCS_URL ?? "https://developers.cloudpayments.ru/";
-const RAW_PATH = resolve(import.meta.dir, "..", "specs", "raw.html");
-const PREV_PATH = resolve(import.meta.dir, "..", "specs", "raw.prev.html");
+const source = getDocsSource(process.argv[2]);
+const DOCS_URL = source.url;
+const RAW_PATH = source.rawPath;
+const PREV_PATH = source.previousRawPath;
 
 const MIN_SIZE = 100_000;
 
@@ -17,7 +19,7 @@ async function sha256(path: string): Promise<string | null> {
 }
 
 async function main() {
-	console.log(`→ Fetching ${DOCS_URL}`);
+	console.log(`→ Fetching ${source.label}: ${DOCS_URL}`);
 	const res = await fetch(DOCS_URL, {
 		headers: { "User-Agent": "onreza/cloudpayments-sdk scrape" },
 	});
@@ -32,11 +34,12 @@ async function main() {
 		console.error(`✗ Response too small (${html.length}B, expected ≥${MIN_SIZE}B). Aborting.`);
 		process.exit(1);
 	}
-	if (!/developers.cloudpayments|CloudPayments/i.test(html)) {
-		console.error("✗ Response does not look like CloudPayments docs. Aborting.");
+	if (!source.contentPattern.test(html)) {
+		console.error(`✗ Response does not look like ${source.label} docs. Aborting.`);
 		process.exit(1);
 	}
 
+	await mkdir(dirname(RAW_PATH), { recursive: true });
 	const tmpPath = `${RAW_PATH}.new`;
 	await writeFile(tmpPath, html);
 
@@ -53,7 +56,7 @@ async function main() {
 
 	if (existsSync(RAW_PATH)) {
 		await copyFile(RAW_PATH, PREV_PATH);
-		console.log("✓ Saved previous HTML to specs/raw.prev.html");
+		console.log(`✓ Saved previous HTML to ${source.previousRawPath}`);
 	}
 
 	await copyFile(tmpPath, RAW_PATH);
@@ -62,8 +65,8 @@ async function main() {
 		.catch(() => {});
 
 	const sizeKB = Math.round(html.length / 1024);
-	console.log(`✓ Updated specs/raw.html (${sizeKB}KB, sha256 ${newHash?.slice(0, 12)}…)`);
-	console.log("→ Run `bun run docs:parse` to rebuild IR");
+	console.log(`✓ Updated ${source.rawPath} (${sizeKB}KB, sha256 ${newHash?.slice(0, 12)}…)`);
+	console.log(`→ Run \`bun tools/parse.ts ${source.name}\` to rebuild IR`);
 }
 
 await main();

@@ -1,9 +1,9 @@
 # @onreza/cloudpayments-sdk
 
-Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru). Требует Node.js 24+; package artifact проверяется на минимальном и актуальном Node 24, unit-контракты — в Bun. Транспорт использует стандартные `fetch` и WebCrypto API.
+Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru) и [CloudKassir](https://developers.cloudkassir.ru). Требует Node.js 24+; package artifact проверяется на минимальном и актуальном Node 24, unit-контракты — в Bun. Транспорт использует стандартные `fetch` и WebCrypto API.
 Публикуется один ESM artifact; `require()` поддержан встроенным в Node 24 механизмом `require(esm)`.
 
-- ✅ 1:1 с документацией CP — все 25+ методов, 7 типов webhook-уведомлений, 10 справочников
+- ✅ 1:1 с распознанными API-адресами официальной документации — 48 методов и 8 типов webhook-уведомлений
 - ✅ Строгая типизация запросов и ответов: `Transaction`, `Subscription`, `Order`, `TokenRecord`, `ThreeDsChallenge`
 - ✅ Union-типы из справочников: `Currency`, `ReasonCode`, `TransactionStatus`, `CultureName`, …
 - ✅ Кроссрантайм WebCrypto для HMAC верификации webhook'ов
@@ -82,7 +82,7 @@ const tx = await cp.payments.post3ds(
 
 ### 4. Webhook handler
 
-CloudPayments шлёт уведомления разных типов (Check/Pay/Fail/Confirm/Refund/Recurrent/Cancel) на разные URL. Заголовок подписи — `Content-HMAC` (или `X-Content-HMAC`).
+CloudPayments и CloudKassir шлют уведомления разных типов (Check/Pay/Fail/Confirm/Refund/Recurrent/Cancel/Receipt) на разные URL. Заголовок подписи — `Content-HMAC` (или `X-Content-HMAC`).
 
 ```ts
 import { verifyCheckWebhook, WebhookVerificationError } from "@onreza/cloudpayments-sdk/webhooks";
@@ -163,12 +163,39 @@ const tx = await cp.payments.chargeToken(
 );
 ```
 
+### 7. Онлайн-чек CloudKassir
+
+```ts
+const submitted = await cp.kkt.submitReceipt(
+  {
+    Inn: "7700000000",
+    Type: "Income",
+    InvoiceId: "order-42",
+    CustomerReceipt: {
+      Items: [
+        { label: "Подписка Pro", price: 499, quantity: 1, amount: 499, vat: 20 },
+      ],
+      taxationSystem: 0,
+      amounts: { electronic: 499 },
+    },
+  },
+  { idempotencyKey: "receipt-order-42" },
+);
+
+const status = await cp.kkt.getReceiptStatus({ Id: submitted.Id });
+// status.Status: "Processed" | "Error" | "Queued" | "NotFound"
+// status.Warnings содержит эксплуатационные предупреждения кассы.
+```
+
 ## Модули клиента
 
 - `cp.payments` — оплата, выплаты, 3DS, просмотр/выгрузка транзакций
 - `cp.subscriptions` — create / get / findByAccount / update / cancel
 - `cp.orders` — счета с оплатой по email-ссылке
 - `cp.settings` — настройки уведомлений в ЛК
+- `cp.escrow` — сведения о безопасных сделках
+- `cp.tPay`, `cp.sbp`, `cp.sberPay` — ссылки и QR для альтернативных способов оплаты
+- `cp.kkt` — чеки, чеки коррекции, маркировка и состояние касс CloudKassir
 
 ## Обработка ошибок
 
@@ -272,6 +299,7 @@ setTimeout(() => ctrl.abort(), 5000);
 ## Документация
 
 - Полная документация CloudPayments: https://developers.cloudpayments.ru
+- Полная документация CloudKassir: https://developers.cloudkassir.ru
 - Архитектура SDK и внутреннее устройство: см. [CLAUDE.md](./CLAUDE.md)
 - Примеры: [examples/](./examples/)
 

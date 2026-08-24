@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 /**
- * End-to-end re-sync с документацией CloudPayments:
- *   1. scrape: docs HTML → specs/raw.html
- *   2. parse:  HTML → specs/ir.json
- *   3. gen:    IR → src/_generated/
+ * End-to-end re-sync с документацией CloudPayments и CloudKassir:
+ *   1. scrape: docs HTML → specs
+ *   2. parse:  HTML → IR
+ *   3. gen:    оба IR → src/_generated/
  *
  * Вызывается из CI (sync-docs.yml) и локально перед релизом.
  *
@@ -19,14 +19,15 @@ import { execSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { IR } from "./parse.ts";
+import { DOCS_SOURCES, type DocsSource } from "./docs-sources.js";
+import type { IR } from "./parse.js";
 
 const ROOT = resolve(import.meta.dir, "..");
 const REPORT_PATH = resolve(ROOT, ".sync-report.md");
 
-async function run(script: string): Promise<void> {
+async function run(script: string, args: string[] = []): Promise<void> {
 	return new Promise((resolvePromise, reject) => {
-		const child = spawn("bun", [script], { cwd: ROOT, stdio: "inherit" });
+		const child = spawn("bun", [script, ...args], { cwd: ROOT, stdio: "inherit" });
 		child.on("exit", (code) => {
 			if (code === 0) resolvePromise();
 			else reject(new Error(`${script} exited with ${code}`));
@@ -90,21 +91,21 @@ function collectHandbooks(ir: IR): Array<{ anchor: string; title: string; rows: 
 	return out;
 }
 
-async function makeReport(): Promise<string> {
-	if (!existsSync(resolve(ROOT, "specs/ir.json"))) return "No IR generated.\n";
-	const ir = (await Bun.file(resolve(ROOT, "specs/ir.json")).json()) as IR;
+async function makeSourceReport(source: DocsSource): Promise<string[]> {
+	if (!existsSync(source.irPath))
+		return [`## ${source.label} docs sync`, "", "No IR generated.", ""];
+	const ir = (await Bun.file(source.irPath).json()) as IR;
 
 	let prev: IR | null = null;
-	const prevPath = resolve(ROOT, "specs/ir.prev.json");
-	if (existsSync(prevPath)) {
-		prev = (await Bun.file(prevPath).json()) as IR;
+	if (existsSync(source.previousIrPath)) {
+		prev = (await Bun.file(source.previousIrPath).json()) as IR;
 	}
 
 	const current = collectEndpoints(ir);
 	const currentHandbooks = collectHandbooks(ir);
 
 	const lines: string[] = [];
-	lines.push("## CloudPayments docs sync", "");
+	lines.push(`## ${source.label} docs sync`, "");
 	lines.push(`- htmlSize: ${ir.source.htmlSize} bytes`);
 	lines.push(`- htmlSha256: \`${ir.source.htmlSha256.slice(0, 16)}…\``);
 	lines.push("");
@@ -160,25 +161,36 @@ async function makeReport(): Promise<string> {
 	}
 	lines.push("");
 
-	return lines.join("\n");
+	return lines;
+}
+
+async function makeReport(): Promise<string> {
+	const sections = await Promise.all(Object.values(DOCS_SOURCES).map(makeSourceReport));
+	return sections.flat().join("\n");
 }
 
 async function main() {
-	const steps = ["tools/scrape.ts", "tools/parse.ts", "tools/gen.ts"];
-	for (const s of steps) {
-		console.log(`\n━━━ ${s} ━━━`);
-		await run(s);
+	for (const source of Object.values(DOCS_SOURCES)) {
+		for (const script of ["tools/scrape.ts", "tools/parse.ts"]) {
+			console.log(`\n━━━ ${script} (${source.label}) ━━━`);
+			await run(script, [source.name]);
+		}
 	}
+	console.log("\n━━━ tools/gen.ts ━━━");
+	await run("tools/gen.ts");
 
 	const report = await makeReport();
 	await writeFile(REPORT_PATH, report);
 	console.log(`\n✓ Sync complete. Report at ${REPORT_PATH}`);
 
-	// Выходим с 100 если ни specs/ir.json, ни src/_generated/ не изменились
+	// Выходим с 100 если ни один IR, ни generated output не изменились
 	// относительно индекса git — CI поймёт что ничего публиковать не надо.
-	const changed = gitStatusPaths(["specs/ir.json", "src/_generated"]).trim();
+	const changed = gitStatusPaths([
+		...Object.values(DOCS_SOURCES).map((source) => source.irPath),
+		"src/_generated",
+	]).trim();
 	if (!changed) {
-		console.log("→ no changes to specs/ir.json or src/_generated — exit 100");
+		console.log("→ no changes to docs IR or src/_generated — exit 100");
 		process.exit(100);
 	}
 	console.log("→ changes detected:");

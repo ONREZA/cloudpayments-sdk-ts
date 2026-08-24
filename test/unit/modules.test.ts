@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { CloudPaymentsClient } from "../../src/client.js";
 import { CloudPaymentsHttpClient } from "../../src/core/http.js";
 import {
 	CloudPayments3DsRequiredError,
@@ -133,5 +134,75 @@ describe("PaymentsModule", () => {
 		const payments = new PaymentsModule(http);
 		const res = await payments.confirm({ TransactionId: 1, Amount: 1 });
 		expect(res).toBeUndefined();
+	});
+});
+
+describe("generated API surface", () => {
+	test("client modules call the newly covered official endpoints", async () => {
+		const urls: string[] = [];
+		const client = new CloudPaymentsClient({
+			publicId: creds.publicId,
+			apiSecret: creds.apiSecret,
+			retry: { maxAttempts: 1 },
+			fetch: (async (url: string | URL | Request) => {
+				urls.push(url.toString());
+				return mockFetchReturning({ Success: true, Model: [] })(url);
+			}) as typeof fetch,
+		});
+
+		await client.payments.find({ InvoiceId: "order-1" });
+		await client.payments.findLegacy({ InvoiceId: "order-1" });
+		await client.escrow.getInfo({ EscrowAccumulationIds: ["escrow-1"] });
+		await client.sbp.listBanks({ PublicTerminalId: "terminal-1" });
+
+		const tPayRequest = {
+			publicId: "pk_test",
+			Amount: 100,
+			Currency: "RUB" as const,
+			Scheme: 0 as const,
+			Browser: "Chrome",
+			Os: "Linux",
+			Webview: false,
+			Device: "DesktopWeb" as const,
+			SuccessRedirectUrl: "https://merchant.test/success",
+			FailRedirectUrl: "https://merchant.test/fail",
+		};
+		await client.tPay.createLink(tPayRequest);
+		await client.tPay.createQrImage(tPayRequest);
+
+		const sbpRequest = {
+			PublicId: "pk_test",
+			Amount: 100,
+			Currency: "RUB" as const,
+			Scheme: "charge" as const,
+		};
+		await client.sbp.createLink(sbpRequest);
+		await client.sbp.createQrImage(sbpRequest);
+
+		const sberPayRequest = {
+			PublicId: "pk_test",
+			Amount: 100,
+			Currency: "RUB" as const,
+			Scheme: "charge" as const,
+			Os: "Linux",
+			Webview: false,
+			Device: "DesktopWeb" as const,
+			Browser: "Chrome",
+		};
+		await client.sberPay.createLink(sberPayRequest);
+		await client.sberPay.createQrImage(sberPayRequest);
+
+		expect(urls).toEqual([
+			"https://api.cloudpayments.ru/v2/payments/find",
+			"https://api.cloudpayments.ru/payments/find",
+			"https://api.cloudpayments.ru/Escrow/GetEscrowInfo",
+			"https://api.cloudpayments.ru/sbp/v2/banks/info",
+			"https://api.cloudpayments.ru/payments/qr/tinkoffpay/link",
+			"https://api.cloudpayments.ru/payments/qr/tinkoffpay/image",
+			"https://api.cloudpayments.ru/payments/qr/sbp/link",
+			"https://api.cloudpayments.ru/payments/qr/sbp/image",
+			"https://api.cloudpayments.ru/payments/qr/sberpay/link",
+			"https://api.cloudpayments.ru/payments/qr/sberpay/image",
+		]);
 	});
 });

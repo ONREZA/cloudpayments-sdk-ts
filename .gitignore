@@ -17,6 +17,8 @@ npm-debug.log*
 
 specs/raw.prev.html
 specs/ir.prev.json
+specs/**/raw.prev.html
+specs/**/ir.prev.json
 .sync-report.md
 
 .turbo

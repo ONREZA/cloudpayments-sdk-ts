@@ -1,26 +1,28 @@
 # cloudpayments-sdk-ts
 
-Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru). Публикуется как `@onreza/cloudpayments-sdk`. Требует Node.js 24+; package artifact проверяется на минимальном и актуальном Node 24, unit-контракты — в Bun. Runtime использует стандартные `fetch` и WebCrypto API.
+Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru) и [CloudKassir](https://developers.cloudkassir.ru). Публикуется как `@onreza/cloudpayments-sdk`. Требует Node.js 24+; package artifact проверяется на минимальном и актуальном Node 24, unit-контракты — в Bun. Runtime использует стандартные `fetch` и WebCrypto API.
 Сборка содержит один ESM artifact; CommonJS-потребители используют встроенный в Node 24 `require(esm)`.
 
 ## Особенность проекта — нет OpenAPI
 
-У CloudPayments нет машинно-читаемой спецификации — только одна большая HTML-страница. Поэтому тут реализован **свой pipeline scrape → IR → codegen** вместо `openapi-typescript`:
+У CloudPayments и CloudKassir нет машинно-читаемой спецификации — только HTML-страницы. Поэтому тут реализован **свой pipeline scrape → IR → codegen** вместо `openapi-typescript`:
 
 ```
-tools/scrape.ts → specs/raw.html     (curl, sha256-guard)
-tools/parse.ts  → specs/ir.json      (cheerio, walk by headings)
-tools/gen.ts    → src/_generated/    (handbooks + endpoint request types + webhook payloads)
+tools/scrape.ts → specs/{source}/raw.html  (fetch, sha256-guard)
+tools/parse.ts  → specs/{source}/ir.json   (cheerio, walk by headings)
+tools/gen.ts    → src/_generated/          (requests + handbooks + webhook payloads)
 ```
 
-IR (`specs/ir.json`) — промежуточное представление, **коммитится в репо**. Human-reviewable, diffable при обновлении доки. Никогда не редактируется руками.
+Оба IR (`specs/ir.json`, `specs/cloudkassir/ir.json`) **коммитятся в репо**. Они human-reviewable и diffable при обновлении документации. Никогда не редактируются руками.
 
 ## Сборка и запуск
 
 ```bash
 bun install
-bun run docs:scrape    # скачать свежий HTML в specs/raw.html
-bun run docs:parse     # HTML → specs/ir.json
+bun run docs:scrape    # скачать CloudPayments HTML
+bun tools/scrape.ts cloudkassir
+bun run docs:parse     # CloudPayments HTML → IR
+bun tools/parse.ts cloudkassir
 bun run gen            # IR → src/_generated/
 bun run docs:sync      # всё вместе (для CI)
 bun run build          # tsdown: ESM + DTS, subpath exports
@@ -39,8 +41,7 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 │  ├─ _generated/          # AUTO — tools/gen.ts, не редактировать
 │  │  ├─ handbooks.ts      # TransactionStatus, ReasonCode, Currency, … + label-мапы
 │  │  ├─ endpoints.ts      # Per-method Request interfaces + URL-константы + ENDPOINTS
-│  │  ├─ webhook-payloads.ts # Check/Pay/Fail/Confirm/Refund/Recurrent/Cancel payloads
-│  │  ├─ shared.ts         # Payer, Receipt, CloudPaymentsMeta (объекты из request)
+│  │  ├─ webhook-payloads.ts # CloudPayments + Receipt payloads
 │  │  ├─ meta.ts           # BASE_URL, package metadata, docs sha256
 │  │  └─ index.ts          # re-export
 │  ├─ core/                # транспорт
@@ -52,17 +53,23 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 │  │  ├─ payments.ts       # charge/auth/confirm/void/refund/payout/get/list/post3ds
 │  │  ├─ subscriptions.ts  # create/get/findByAccount/update/cancel
 │  │  ├─ orders.ts         # create/cancel
-│  │  └─ settings.ts       # getNotification/updateNotification (c {Type} substitution)
+│  │  ├─ settings.ts       # getNotification/updateNotification (c {Type} substitution)
+│  │  ├─ alternative-payments.ts # T-Pay, СБП и SberPay
+│  │  ├─ escrow.ts         # безопасные сделки
+│  │  └─ kkt.ts            # CloudKassir /kkt/*
 │  ├─ webhooks/index.ts    # verifyWebhook + typed wrappers + WebhookVerificationError
 │  ├─ errors/index.ts      # CloudPaymentsError иерархия + 3DsRequiredError + BusinessError
-│  ├─ types.ts             # РУЧНЫЕ Response shapes: Transaction, Subscription, Order, ThreeDsChallenge, TokenRecord, ApiEnvelope
+│  ├─ models.ts            # РУЧНЫЕ вложенные request-модели и чеки
+│  ├─ kkt-types.ts         # РУЧНЫЕ CloudKassir response shapes
+│  ├─ types.ts             # РУЧНЫЕ CloudPayments response shapes
 │  ├─ client.ts            # CloudPaymentsClient — composition root
 │  └─ index.ts             # публичные exports
 ├─ test/unit/              # быстрые contract-тесты без сети
 ├─ tools/                  # pipeline scrape→parse→gen
 ├─ specs/
 │  ├─ raw.html             # (gitignored отдельно) скачанный HTML
-│  └─ ir.json              # IR, коммитится
+│  ├─ ir.json              # CloudPayments IR, коммитится
+│  └─ cloudkassir/         # raw.html + коммитящийся ir.json
 └─ dist/                   # billder output
 ```
 
@@ -87,14 +94,14 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 
 ### Ключевые паттерны
 
-- **Все API-ответы обёрнуты в `{ Success, Message, Model }`**. В модулях распаковывается через `BaseModule.exec()` → при `Success:true` возвращает `Model`, при `Success:false` бросает `CloudPaymentsBusinessError` или `CloudPayments3DsRequiredError` (если детектирован 3DS-challenge).
+- **API-ответы обёрнуты в `{ Success, Message?, Model? }`**. В модулях распаковываются через `BaseModule`; KKT дополнительно сохраняет `Warning`, `WarningCodes` и `Warnings`.
 - **3DS detection** включён внутри charge/auth wrappers. Распознаётся по форме `Model: { AcsUrl, PaReq }`; пользователь не может случайно отключить этот endpoint-инвариант.
 - **Идемпотентность**: через `opts.idempotencyKey` → заголовок `X-Request-ID`. CP хранит результат 1 час.
 - **Retry**: read-only POST можно повторять. Mutation повторяется только с `idempotencyKey`; иначе timeout/network означает `CloudPaymentsUnknownOutcomeError` и требует сверки, а не replay.
 - **Telemetry boundary**: hooks не получают `Authorization` и body; их исключения уходят в `onHookError` и не меняют результат запроса.
 - **Origin ownership**: generated endpoints — относительные paths. `CloudPaymentsClient.baseUrl` выбирает RU/EU/KZ; абсолютный URL другого origin и HTTP redirects отклоняются до отправки Basic credentials.
 - **AbortError** пользователя пробрасывается как есть; timeout безопасной операции заворачивается в `CloudPaymentsNetworkError`.
-- **Webhook verify**: `Content-HMAC` считается по encoded body, `X-Content-HMAC` — по URL-decoded body. Form parser преобразует только поля, чьи типы известны из CP contract; идентификаторы и части номера карты остаются строками.
+- **Webhook verify**: `Content-HMAC` считается по encoded body, `X-Content-HMAC` — по URL-decoded body. Form parser использует отдельную схему каждого типа уведомления; идентификаторы и части номера карты остаются строками.
 
 ## Тип-система
 
@@ -145,14 +152,14 @@ try {
 }
 ```
 
-Типы уведомлений (7): Check, Pay, Fail, Confirm, Refund, Recurrent, Cancel.
+Типы уведомлений (8): Check, Pay, Fail, Confirm, Refund, Recurrent, Cancel, Receipt.
 
 ## Обновление доки
 
-CP меняет доку редко, но когда меняет — `bun run docs:sync` + ревью diff в `specs/ir.json` и `src/_generated/`.
+Провайдеры меняют документацию редко, но когда меняют — `bun run docs:sync` + ревью обоих IR и `src/_generated/`.
 
 - Появилось новое поле в таблице — попадёт в IR автоматически и в сгенерированный Request/payload interface.
-- Появился новый endpoint — нужно добавить alias в `ENDPOINT_ALIASES` в `tools/gen.ts` (anchor → module + methodName) и ручной wrapper в соответствующий `modules/*.ts`.
+- Появился новый endpoint — coverage gate остановит генерацию, пока не добавлены alias в `ENDPOINT_ALIASES` и ручной wrapper в соответствующий `modules/*.ts`.
 - Response shape изменился — правим `src/types.ts` вручную.
 
 Парсер терпим к артефактам в доке (напр. кривые названия заголовков типа "Пример формы" для endpoint post3ds) — переименование живёт в `ENDPOINT_ALIASES`, а не в парсере.
@@ -234,6 +241,7 @@ Headless-режим: `new Bun.WebView({ backend: { type: "chrome", argv: ["--hea
 ## Внешние ресурсы
 
 - API docs: https://developers.cloudpayments.ru
+- KKT API docs: https://developers.cloudkassir.ru
 - Prod base URL: `https://api.cloudpayments.ru`
 - EU / KZ base URLs: в `src/_generated/meta.ts`
 - Sandbox — не отдельный домен, а тестовые Public ID/Secret, см. раздел `#testirovanie` документации.

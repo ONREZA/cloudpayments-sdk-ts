@@ -3,8 +3,20 @@
  * Do not edit directly — run `bun run gen` instead.
  */
 
-import type { Currency, CultureName } from "./handbooks.js";
-import type { Payer, Receipt, CloudPaymentsMeta } from "./shared.js";
+import type { Currency, CultureName, FiscalDataOperator } from "./handbooks.js";
+import type { Payer, CloudPaymentsMeta, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem } from "../models.js";
+
+/**
+ * Метод для получения информации по БС для обоих типов сделки (N:1 и 1:N)
+ * Публичный метод для получения информации по массиву **EscrowAccumulationId**, который позволяет получить:
+ * @see https://developers.cloudpayments.ru/#metod-dlya-polucheniya-informatsii-po-bs-dlya-oboih-tipov-sdelki-n-1-i-1-n
+ */
+export interface EscrowGetInfoRequest {
+	/** Идентификаторы безопасных сделок */
+	EscrowAccumulationIds: string[];
+}
+
+export const ESCROW_GET_INFO_URL = "/Escrow/GetEscrowInfo" as const;
 
 /**
  * Тестовый метод
@@ -317,6 +329,30 @@ export interface PaymentsGetRequest {
 export const PAYMENTS_GET_URL = "/payments/get" as const;
 
 /**
+ * Проверка статуса платежа
+ * Метод поиска платежа и проверки статуса (см. [справочник](#statusy-operatsiy)).
+ * @see https://developers.cloudpayments.ru/#proverka-statusa-platezha
+ */
+export interface PaymentsFindLegacyRequest {
+	/** Номер заказа */
+	InvoiceId: string;
+}
+
+export const PAYMENTS_FIND_LEGACY_URL = "/payments/find" as const;
+
+/**
+ * Проверка статуса платежа
+ * Метод поиска платежа и проверки статуса (см. [справочник](#statusy-operatsiy)).
+ * @see https://developers.cloudpayments.ru/#proverka-statusa-platezha
+ */
+export interface PaymentsFindRequest {
+	/** Номер заказа */
+	InvoiceId: string;
+}
+
+export const PAYMENTS_FIND_URL = "/v2/payments/find" as const;
+
+/**
  * Выгрузка списка транзакций
  * Метод выгрузки списка транзакций за день.
  * @see https://developers.cloudpayments.ru/#vygruzka-spiska-tranzaktsiy
@@ -407,7 +443,7 @@ export interface SubscriptionsCreateRequest {
 	/** Максимальное количество платежей в подписке. Если указан, должен быть больше 0 */
 	MaxPeriods?: number;
 	/** Для изменения состава [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) */
-	CustomerReceipt?: Record<string, unknown>;
+	CustomerReceipt?: KktReceipt;
 }
 
 export const SUBSCRIPTIONS_CREATE_URL = "/subscriptions/create" as const;
@@ -461,7 +497,7 @@ export interface SubscriptionsUpdateRequest {
 	/** Для изменения максимального количества платежей в подписке */
 	MaxPeriods?: number;
 	/** Для изменения состава [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) */
-	CustomerReceipt?: Record<string, unknown>;
+	CustomerReceipt?: KktReceipt;
 	/** Язык уведомлений. Возможные значения: "ru-RU", "en-US". ([см. справочник](#lokalizatsiya)) */
 	CultureName?: CultureName;
 }
@@ -570,8 +606,464 @@ export interface SettingsUpdateNotificationRequest {
 
 export const SETTINGS_UPDATE_NOTIFICATION_URL = "/site/notifications/{Type}/update" as const;
 
+/**
+ * Получение ссылки для оплаты
+ * @see https://developers.cloudpayments.ru/#poluchenie-ssylki-dlya-oplaty
+ */
+export interface TPayCreateLinkRequest {
+	/** Идентификатор сайта, который находится в ЛК */
+	publicId: string;
+	/** Cумма платежа в валюте, разделитель точка. Количество не нулевых знаков после точки – 2 */
+	Amount: number;
+	/** Валюта: RUB (см. [справочник](#spisok-valyut)) */
+	Currency: Currency;
+	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `0` - одностадийная оплата `1` - двухстадийная оплата */
+	Scheme: 0 | 1;
+	/** Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera` */
+	Browser: string;
+	/** Операционная система устройства плательщика. Пример значения: `Android`, `iOS`, `Windows` */
+	Os: string;
+	/** Признак открытия браузера в режиме webview. Возможные значения: `true` - для оплат через webview `false` - для оплат без webview */
+	Webview: boolean;
+	/** Признак устройства плательщика. Возможные значения: `MobileApp` - вызов оплаты из мобильного приложения `DesktopWeb` - вызов оплаты из браузера с десктопа `Mobile` - вызов из браузера с мобильного устройства */
+	Device: "MobileApp" | "DesktopWeb" | "Mobile";
+	/** Url для перенаправления клиента после успешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка. */
+	SuccessRedirectUrl: string;
+	/** Url для перенаправления клиента после неуспешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка. */
+	FailRedirectUrl: string;
+	/** IP-адрес плательщика */
+	IpAddress?: string;
+	/** Идентификатор пользователя */
+	AccountId?: string;
+	/** E-mail плательщика */
+	Email?: string;
+	/** Номер счёта или заказа */
+	InvoiceId?: string;
+	/** Назначение платежа в свободной форме */
+	Description?: string;
+	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
+	JsonData?: Record<string, unknown>;
+	/** Время в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Если параметр не передан, оплату можно будет совершить в течение 24 часов. **Важно:** - Значение 0 считается **некорректным** и может привести к ошибке обработки запроса. - Если временное ограничение не требуется, параметр следует **не передавать** или явно указать как `null`. */
+	TtlMinutes?: number | null;
+	/** Признак сохранения карточного токена для проведения оплаты по сохранённой карте (см. [Оплата по токену (рекарринг)](#oplata-po-tokenu-rekarring)). Возможные значения: `true` - после успешной оплаты будет возвращён карточный токен, `false` - токен не будет возвращаться (по-умолчанию) Параметр SaveCard обрабатывается только при включении настройки "Сохранение токена карты" в Личном Кабинете. При включении настройки "Сохранять принудительно", параметр SaveCard будет игнорироваться. */
+	SaveCard?: boolean;
+}
+
+export const T_PAY_CREATE_LINK_URL = "/payments/qr/tinkoffpay/link" as const;
+
+/**
+ * Получение QR-кода для оплаты
+ * @see https://developers.cloudpayments.ru/#poluchenie-qr-koda-dlya-oplaty
+ */
+export interface TPayCreateQrImageRequest {
+	/** Идентификатор сайта, который находится в ЛК */
+	publicId: string;
+	/** Cумма платежа в валюте, разделитель точка. Количество не нулевых знаков после точки – 2 */
+	Amount: number;
+	/** Валюта: RUB (см. [справочник](#spisok-valyut)) */
+	Currency: Currency;
+	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `0` - одностадийная оплата `1` - двухстадийная оплата */
+	Scheme: 0 | 1;
+	/** Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera` */
+	Browser: string;
+	/** Операционная система устройства плательщика. Пример значения: `Android`, `iOS`, `Windows` */
+	Os: string;
+	/** Признак открытия браузера в режиме webview. Возможные значения: `true` - для оплат через webview `false` - для оплат без webview */
+	Webview: boolean;
+	/** Признак устройства плательщика. Возможные значения: `MobileApp` - вызов оплаты из мобильного приложения `DesktopWeb` - вызов оплаты из браузера с десктопа `Mobile` - вызов из браузера с мобильного устройства */
+	Device: "MobileApp" | "DesktopWeb" | "Mobile";
+	/** Url для перенаправления клиента после успешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка. */
+	SuccessRedirectUrl: string;
+	/** Url для перенаправления клиента после неуспешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка. */
+	FailRedirectUrl: string;
+	/** IP-адрес плательщика */
+	IpAddress?: string;
+	/** Идентификатор пользователя */
+	AccountId?: string;
+	/** E-mail плательщика */
+	Email?: string;
+	/** Номер счёта или заказа */
+	InvoiceId?: string;
+	/** Назначение платежа в свободной форме */
+	Description?: string;
+	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
+	JsonData?: Record<string, unknown>;
+	/** Время в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Если параметр не передан, оплату можно будет совершить в течение 24 часов. **Важно:** - Значение 0 считается **некорректным** и может привести к ошибке обработки запроса. - Если временное ограничение не требуется, параметр следует **не передавать** или явно указать как `null`. */
+	TtlMinutes?: number | null;
+	/** Признак сохранения карточного токена для проведения оплаты по сохранённой карте (см. [Оплата по токену (рекарринг)](#oplata-po-tokenu-rekarring)). Возможные значения: `true` - после успешной оплаты будет возвращён карточный токен, `false` - токен не будет возвращаться (по-умолчанию) Параметр SaveCard обрабатывается только при включении настройки "Сохранение токена карты" в Личном Кабинете. При включении настройки "Сохранять принудительно", параметр SaveCard будет игнорироваться. */
+	SaveCard?: boolean;
+}
+
+export const T_PAY_CREATE_QR_IMAGE_URL = "/payments/qr/tinkoffpay/image" as const;
+
+/**
+ * Получение ссылки для оплаты
+ * @see https://developers.cloudpayments.ru/#sbp-poluchenie-ssylki-dlya-oplaty
+ */
+export interface SbpCreateLinkRequest {
+	/** Идентификатор сайта, который находится в ЛК */
+	PublicId: string;
+	/** Cумма платежа в рублях, разделитель точка. Количество не нулевых знаков после точки – 2 */
+	Amount: number;
+	/** Валюта: RUB (см. [справочник](#spisok-valyut)) */
+	Currency: Currency;
+	/** Назначение платежа в свободной форме */
+	Description?: string;
+	/** Идентификатор пользователя, используется для создания подписки и получения токена */
+	AccountId?: string;
+	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
+	Email?: string;
+	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
+	JsonData?: Record<string, unknown>;
+	/** Идентификатор/номер счета. Приходит в Check-уведомлении и может использоваться для сверки номера заказа */
+	InvoiceId?: string;
+	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `charge` - одностадийная оплата */
+	Scheme: "charge";
+	/** Url для перенаправления клиента после успешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка. Значение должно содержать не более 1024 символов, быть в кодировке ASCII и соответствовать формату спецификации RFC-3986. */
+	SuccessRedirectUrl?: string;
+	/** IP-адрес плательщика */
+	IpAddress?: string;
+	/** Операционная система устройства плательщика. Пример значения: `Android`, `iOS`, `Windows` */
+	Os?: string;
+	/** Признак открытия браузера в режиме webview. Возможные значения: `true` - для оплат через webview `false` - для оплат без webview */
+	Webview?: boolean;
+	/** Признак устройства плательщика. Возможные значения: `MobileApp` - вызов оплаты из мобильного приложения `DesktopWeb` - вызов оплаты из браузера с десктопа `Mobile` - вызов из браузера с мобильного устройства */
+	Device?: "MobileApp" | "DesktopWeb" | "Mobile";
+	/** Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera` */
+	Browser?: string;
+	/** Время, в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Минимальное допустимое значение - "1". Максимальное допустимое значение - "129 600" (90 дней). Если параметр не передан, оплату можно будет совершить в течение 72 часов. */
+	TtlMinutes?: number | null;
+	/** Флаг необходимости сохранить карту для привязки счета в Национальной Системе Платежных Карт для последующих списаний */
+	SaveCard?: boolean;
+	/** Флаг тестового режима оплаты */
+	IsTest?: boolean;
+}
+
+export const SBP_CREATE_LINK_URL = "/payments/qr/sbp/link" as const;
+
+/**
+ * Получение QR-кода для оплаты
+ * @see https://developers.cloudpayments.ru/#sbp-poluchenie-qr-koda-dlya-oplaty
+ */
+export interface SbpCreateQrImageRequest {
+	/** Идентификатор сайта, который находится в ЛК */
+	PublicId: string;
+	/** Cумма платежа в рублях, разделитель точка. Количество не нулевых знаков после точки – 2 */
+	Amount: number;
+	/** Валюта: RUB (см. [справочник](#spisok-valyut)) */
+	Currency: Currency;
+	/** Назначение платежа в свободной форме */
+	Description?: string;
+	/** Идентификатор пользователя, используется для создания подписки и получения токена */
+	AccountId?: string;
+	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
+	Email?: string;
+	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
+	JsonData?: Record<string, unknown>;
+	/** Идентификатор/номер счета. Приходит в Check-уведомлении и может использоваться для сверки номера заказа */
+	InvoiceId?: string;
+	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `charge` - одностадийная оплата */
+	Scheme: "charge";
+	/** Url для перенаправления клиента после успешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка. Значение должно содержать не более 1024 символов, быть в кодировке ASCII и соответствовать формату спецификации RFC-3986. */
+	SuccessRedirectUrl?: string;
+	/** IP-адрес плательщика */
+	IpAddress?: string;
+	/** Операционная система устройства плательщика. Пример значения: `Android`, `iOS`, `Windows` */
+	Os?: string;
+	/** Признак открытия браузера в режиме webview. Возможные значения: `true` - для оплат через webview `false` - для оплат без webview */
+	Webview?: boolean;
+	/** Признак устройства плательщика. Возможные значения: `MobileApp` - вызов оплаты из мобильного приложения `DesktopWeb` - вызов оплаты из браузера с десктопа `Mobile` - вызов из браузера с мобильного устройства */
+	Device?: "MobileApp" | "DesktopWeb" | "Mobile";
+	/** Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera` */
+	Browser?: string;
+	/** Время, в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Минимальное допустимое значение - "1". Максимальное допустимое значение - "129 600" (90 дней). Если параметр не передан, оплату можно будет совершить в течение 72 часов. */
+	TtlMinutes?: number | null;
+	/** Флаг необходимости сохранить карту для привязки счета в Национальной Системе Платежных Карт для последующих списаний */
+	SaveCard?: boolean;
+	/** Флаг тестового режима оплаты */
+	IsTest?: boolean;
+}
+
+export const SBP_CREATE_QR_IMAGE_URL = "/payments/qr/sbp/image" as const;
+
+/**
+ * Список участников СБП
+ * @see https://developers.cloudpayments.ru/#spisok-uchastnikov-sbp
+ */
+export interface SbpListBanksRequest {
+	AccountId?: string;
+	IsRenewSubscription?: boolean;
+	JsonData?: string;
+	Platform?: string;
+	PublicTerminalId: string;
+	SaveCard?: boolean;
+	Token?: string;
+}
+
+export const SBP_LIST_BANKS_URL = "/sbp/v2/banks/info" as const;
+
+/**
+ * Получение ссылки для оплаты
+ * @see https://developers.cloudpayments.ru/#sberpay-poluchenie-ssylki-dlya-oplaty
+ */
+export interface SberPayCreateLinkRequest {
+	/** Идентификатор сайта, который находится в ЛК */
+	PublicId: string;
+	/** Cумма платежа в рублях, разделитель точка. Количество не нулевых знаков после точки – 2 */
+	Amount: number;
+	/** Валюта: RUB (см. [справочник](#spisok-valyut)) */
+	Currency: Currency;
+	/** Назначение платежа в свободной форме */
+	Description?: string;
+	/** Идентификатор пользователя, используется для создания подписки и получения токена */
+	AccountId?: string;
+	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
+	Email?: string;
+	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
+	JsonData?: Record<string, unknown>;
+	/** Идентификатор/номер счета. Приходит в Check-уведомлении и может использоваться для сверки номера заказа */
+	InvoiceId?: string;
+	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `charge` - одностадийная оплата; `auth` - двухстадийная оплата */
+	Scheme: "charge" | "auth";
+	/** Url для перенаправления клиента после успешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка. */
+	SuccessRedirectUrl?: string;
+	/** IP-адрес плательщика */
+	IpAddress?: string;
+	/** Операционная система устройства плательщика. Пример значения: `Android`, `iOS`, `Windows` */
+	Os: string;
+	/** Признак открытия браузера в режиме webview. Возможные значения: `true` - для оплат через webview `false` - для оплат без webview */
+	Webview: boolean;
+	/** Признак устройства плательщика. Возможные значения: `MobileApp` - вызов оплаты из мобильного приложения `DesktopWeb` - вызов оплаты из браузера с десктопа `Mobile` - вызов из браузера с мобильного устройства */
+	Device: "MobileApp" | "DesktopWeb" | "Mobile";
+	/** Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera` */
+	Browser: string;
+}
+
+export const SBER_PAY_CREATE_LINK_URL = "/payments/qr/sberpay/link" as const;
+
+/**
+ * Получение QR-кода для оплаты
+ * @see https://developers.cloudpayments.ru/#sberpay-poluchenie-qr-koda-dlya-oplaty
+ */
+export interface SberPayCreateQrImageRequest {
+	/** Идентификатор сайта, который находится в ЛК */
+	PublicId: string;
+	/** Cумма платежа в рублях, разделитель точка. Количество не нулевых знаков после точки – 2 */
+	Amount: number;
+	/** Валюта: RUB (см. [справочник](#spisok-valyut)) */
+	Currency: Currency;
+	/** Назначение платежа в свободной форме */
+	Description?: string;
+	/** Идентификатор пользователя, используется для создания подписки и получения токена */
+	AccountId?: string;
+	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
+	Email?: string;
+	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
+	JsonData?: Record<string, unknown>;
+	/** Идентификатор/номер счета. Приходит в Check-уведомлении и может использоваться для сверки номера заказа */
+	InvoiceId?: string;
+	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `charge` - одностадийная оплата; `auth` - двухстадийная оплата */
+	Scheme: "charge" | "auth";
+	/** Url для перенаправления клиента после успешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка. */
+	SuccessRedirectUrl?: string;
+	/** IP-адрес плательщика */
+	IpAddress?: string;
+	/** Операционная система устройства плательщика. Пример значения: `Android`, `iOS`, `Windows` */
+	Os: string;
+	/** Признак открытия браузера в режиме webview. Возможные значения: `true` - для оплат через webview `false` - для оплат без webview */
+	Webview: boolean;
+	/** Признак устройства плательщика. Возможные значения: `MobileApp` - вызов оплаты из мобильного приложения `DesktopWeb` - вызов оплаты из браузера с десктопа `Mobile` - вызов из браузера с мобильного устройства */
+	Device: "MobileApp" | "DesktopWeb" | "Mobile";
+	/** Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera` */
+	Browser: string;
+}
+
+export const SBER_PAY_CREATE_QR_IMAGE_URL = "/payments/qr/sberpay/image" as const;
+
+/**
+ * Фискализация кассы
+ * Метод перевода интернет-кассы в фискальный режим работы (первичная регистрация).
+ * @see https://developers.cloudkassir.ru/#fiskalizatsiya-kassy
+ */
+export interface KktFiscalizeRequest {
+	/** ИНН организации или индивидуального предпринимателя — пользователя кассы */
+	Inn: string;
+	/** Заводской номер кассы */
+	DeviceNumber: string;
+	/** Номер фискального накопителя */
+	FiscalNumber: string;
+	/** Регистрационный номер кассы */
+	RegNumber: string;
+	/** Адрес сайта (сайтов) — место расчетов */
+	Url: string;
+	/** Оператор фискальный данных, см. [справочник](#operatory-fiskalnyh-dannyh) */
+	Ofd: FiscalDataOperator;
+	/** Одно или несколько значений системы налогообложения, см. [справочник](#taxationsystem) */
+	TaxationSystem: KktTaxationSystem[];
+	/** Email магазина */
+	MerchantEmail: string;
+	/** Телефон магазина */
+	MerchantPhone: string;
+	/** Для бланков строгой отчётности (БСО) */
+	IsBso?: boolean;
+}
+
+export const KKT_FISCALIZE_URL = "/kkt/fiscalize" as const;
+
+/**
+ * Формирование кассового чека
+ * Метод формирования кассового чека.
+ * @see https://developers.cloudkassir.ru/#formirovanie-kassovogo-cheka
+ */
+export interface KktSubmitReceiptRequest {
+	/** ИНН вашей организации или ИП, на который зарегистрирована касса */
+	Inn: string;
+	/** Признак расчета, см. [ниже](#type) */
+	Type: KktReceiptType;
+	/** Состав чека см. [ниже](#customerreceipt) */
+	CustomerReceipt: KktReceipt;
+	/** Номер заказа в вашей системе */
+	InvoiceId?: string;
+	/** Идентификатор пользователя в вашей системе */
+	AccountId?: string;
+}
+
+export const KKT_SUBMIT_RECEIPT_URL = "/kkt/receipt" as const;
+
+/**
+ * Запрос статуса чека
+ * Метод получения статуса чека.
+ * @see https://developers.cloudkassir.ru/#zapros-statusa-cheka
+ */
+export interface KktGetReceiptStatusRequest {
+	/** Идентификатор чека */
+	Id: string;
+}
+
+export const KKT_GET_RECEIPT_STATUS_URL = "/kkt/receipt/status/get" as const;
+
+/**
+ * Получение данных чека
+ * Метод получения детализации чека.
+ * @see https://developers.cloudkassir.ru/#poluchenie-dannyh-cheka
+ */
+export interface KktGetReceiptRequest {
+	/** Идентификатор чека */
+	Id: string;
+}
+
+export const KKT_GET_RECEIPT_URL = "/kkt/receipt/get" as const;
+
+/**
+ * Проверка кода маркировки
+ * Для использования метода API, проверяющего маркировку товара в Системе цифровой маркировки товаров Честный знак, нужно задать настройки “Разрешительный режим“ через ЛК мерчанта в разделе “Чеки и кассы“.
+ * @see https://developers.cloudkassir.ru/#proverka-koda-markirovki
+ */
+export interface KktValidateMarkCodeRequest {
+	/** ИНН организации или индивидуального предпринимателя — пользователя кассы */
+	Inn: string;
+	/** Код маркировки */
+	MarkCode: string;
+}
+
+export const KKT_VALIDATE_MARK_CODE_URL = "/kkt/validate-mark-code" as const;
+
+/**
+ * Массовая проверка кодов маркировки
+ * Метод для проверки массива кодов маркировки.
+ * @see https://developers.cloudkassir.ru/#massovaya-proverka-kodov-markirovki
+ */
+export interface KktValidateMarkCodesRequest {
+	/** ИНН организации или индивидуального предпринимателя — пользователя кассы */
+	Inn: string;
+	/** Коды маркировки */
+	MarkCodes: string[];
+}
+
+export const KKT_VALIDATE_MARK_CODES_URL = "/kkt/validate-mark-codes" as const;
+
+/**
+ * Формирование чека коррекции
+ * Метод формирования чека коррекции.
+ * @see https://developers.cloudkassir.ru/#formirovanie-cheka-korrektsii
+ */
+export interface KktSubmitCorrectionReceiptRequest {
+	/** Состав чека см. [ниже](#correctionreceiptdata) */
+	CorrectionReceiptData: KktCorrectionReceiptData;
+}
+
+export const KKT_SUBMIT_CORRECTION_RECEIPT_URL = "/kkt/correction-receipt" as const;
+
+/**
+ * Запрос статуса чека коррекции
+ * Метод получения статуса чека.
+ * @see https://developers.cloudkassir.ru/#zapros-statusa-cheka-korrektsii
+ */
+export interface KktGetCorrectionReceiptStatusRequest {
+	/** Идентификатор чека */
+	Id: string;
+}
+
+export const KKT_GET_CORRECTION_RECEIPT_STATUS_URL = "/kkt/correction-receipt/status/get" as const;
+
+/**
+ * Получение данных чека коррекции
+ * Метод получения детализации чека.
+ * @see https://developers.cloudkassir.ru/#poluchenie-dannyh-cheka-korrektsii
+ */
+export interface KktGetCorrectionReceiptRequest {
+	/** Идентификатор чека */
+	Id: string;
+}
+
+export const KKT_GET_CORRECTION_RECEIPT_URL = "/kkt/correction-receipt/get" as const;
+
+/**
+ * Изменение состояния кассы
+ * Метод ручного управления состоянием кассы. Касса может быть принудительно выключена (отправлена на техобслуживание) и включена (введена в эксплуатацию).
+ * @see https://developers.cloudkassir.ru/#izmenenie-sostoyaniya-kassy
+ */
+export interface KktUpdateCashRegisterStateRequest {
+	/** ИНН организации или индивидуального предпринимателя — пользователя кассы */
+	Inn: string;
+	/** Заводской номер кассы */
+	DeviceNumber: string;
+	/** Номер фискального накопителя */
+	FiscalNumber: string;
+	/** Флаг, указывающий, нужно ли помещать кассу на техобслуживание */
+	OnMaintenance: boolean;
+}
+
+export const KKT_UPDATE_CASH_REGISTER_STATE_URL = "/kkt/state" as const;
+
+/**
+ * Получение данных кассы
+ * Метод получения данных кассы.
+ * @see https://developers.cloudkassir.ru/#poluchenie-dannyh-kassy
+ */
+export interface KktGetCashRegisterStateRequest {
+	/** Заводской номер кассы */
+	DeviceNumber: string;
+	/** Номер фискального накопителя */
+	FiscalNumber: string;
+}
+
+export const KKT_GET_CASH_REGISTER_STATE_URL = "/kkt/state/get" as const;
+
+/**
+ * Предупреждения по кассам
+ * Метод получения предупреждений по всем кассам мерчанта.
+ * @see https://developers.cloudkassir.ru/#preduprezhdeniya-po-kassam
+ */
+export type KktListCashRegisterWarningsRequest = Record<string, never>;
+
+export const KKT_LIST_CASH_REGISTER_WARNINGS_URL = "/kkt/merchant-devices-warnings" as const;
+
 /** Реестр всех API-эндпоинтов, сгенерирован из IR. */
 export const ENDPOINTS = {
+	escrow: {
+		getInfo: { url: "/Escrow/GetEscrowInfo", method: "POST" as const },
+	},
 	payments: {
 		test: { url: "/test", method: "POST" as const },
 		chargeCryptogram: { url: "/payments/cards/charge", method: "POST" as const },
@@ -586,6 +1078,8 @@ export const ENDPOINTS = {
 		payoutToken: { url: "/payments/token/topup", method: "POST" as const },
 		payoutSbp: { url: "/payments/alt/topup", method: "POST" as const },
 		get: { url: "/payments/get", method: "POST" as const },
+		findLegacy: { url: "/payments/find", method: "POST" as const },
+		find: { url: "/v2/payments/find", method: "POST" as const },
 		listByDay: { url: "/payments/list", method: "POST" as const },
 		listByPeriod: { url: "/v2/payments/list", method: "POST" as const },
 		listClaimsByPeriod: { url: "/chargebacks/list", method: "POST" as const },
@@ -605,5 +1099,32 @@ export const ENDPOINTS = {
 	settings: {
 		getNotification: { url: "/site/notifications/{Type}/get", method: "POST" as const },
 		updateNotification: { url: "/site/notifications/{Type}/update", method: "POST" as const },
+	},
+	tPay: {
+		createLink: { url: "/payments/qr/tinkoffpay/link", method: "POST" as const },
+		createQrImage: { url: "/payments/qr/tinkoffpay/image", method: "POST" as const },
+	},
+	sbp: {
+		createLink: { url: "/payments/qr/sbp/link", method: "POST" as const },
+		createQrImage: { url: "/payments/qr/sbp/image", method: "POST" as const },
+		listBanks: { url: "/sbp/v2/banks/info", method: "POST" as const },
+	},
+	sberPay: {
+		createLink: { url: "/payments/qr/sberpay/link", method: "POST" as const },
+		createQrImage: { url: "/payments/qr/sberpay/image", method: "POST" as const },
+	},
+	kkt: {
+		fiscalize: { url: "/kkt/fiscalize", method: "POST" as const },
+		submitReceipt: { url: "/kkt/receipt", method: "POST" as const },
+		getReceiptStatus: { url: "/kkt/receipt/status/get", method: "POST" as const },
+		getReceipt: { url: "/kkt/receipt/get", method: "POST" as const },
+		validateMarkCode: { url: "/kkt/validate-mark-code", method: "POST" as const },
+		validateMarkCodes: { url: "/kkt/validate-mark-codes", method: "POST" as const },
+		submitCorrectionReceipt: { url: "/kkt/correction-receipt", method: "POST" as const },
+		getCorrectionReceiptStatus: { url: "/kkt/correction-receipt/status/get", method: "POST" as const },
+		getCorrectionReceipt: { url: "/kkt/correction-receipt/get", method: "POST" as const },
+		updateCashRegisterState: { url: "/kkt/state", method: "POST" as const },
+		getCashRegisterState: { url: "/kkt/state/get", method: "POST" as const },
+		listCashRegisterWarnings: { url: "/kkt/merchant-devices-warnings", method: "POST" as const },
 	},
 } as const;

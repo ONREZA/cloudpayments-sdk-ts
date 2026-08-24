@@ -14,14 +14,14 @@ import type {
 	SubscriptionStatus,
 	TransactionStatus,
 } from "./_generated/handbooks.js";
-import type { Payer } from "./_generated/shared.js";
+import type { Payer, Receipt } from "./models.js";
 
 /** Стандартная обёртка всех ответов CP API. */
 export interface ApiEnvelope<T = unknown> {
 	/** true при успешной операции. false — бизнес-ошибка или требуется 3DS. */
 	Success: boolean;
 	/** Человеко-читаемое сообщение об ошибке или null. */
-	Message: string | null;
+	Message?: string | null;
 	/** Полезная нагрузка ответа. Отсутствует для некоторых методов (напр. test). */
 	Model?: T;
 	/** Дополнительный код ошибки, который присутствует в части ответов API. */
@@ -152,7 +152,7 @@ export interface Subscription {
 	LastTransactionDateIso: string | null;
 	NextTransactionDate: string | null;
 	NextTransactionDateIso: string | null;
-	Receipt: unknown | null;
+	Receipt: Receipt | null;
 	FailoverSchemeId: string | null;
 }
 
@@ -187,6 +187,64 @@ export interface TokenRecord {
 	CardMask: string;
 	ExpirationDateMonth: number;
 	ExpirationDateYear: number;
+}
+
+/** Претензия или штраф из `/chargebacks/list`. */
+export interface Chargeback {
+	ChargeBackId: string;
+	TransactionId: number;
+	TerminalUrl: string;
+	Gateway: string;
+	Operation: "Presentment" | "Representment";
+	Type: "Chargeback" | "Fee";
+	Card: string;
+	Date: string;
+	Amount: number;
+	Currency: Currency;
+}
+
+export interface EscrowTransaction {
+	Id: number;
+	Status: TransactionStatus;
+	Amount: number;
+}
+
+export interface EscrowPayoutTransaction extends EscrowTransaction {
+	IsFinalPayout: boolean;
+}
+
+export interface EscrowInfo {
+	Status: "Open" | "Closed";
+	PaidoutTransactions: EscrowTransaction[] | null;
+	NotPaidoutTransactions: EscrowTransaction[] | null;
+	PayoutTransactions: EscrowPayoutTransaction[] | null;
+	RefundedTransactions: EscrowTransaction[] | null;
+	EscrowAccumulationId: string;
+	Balance: number;
+}
+
+export interface AlternativePaymentIntent {
+	QrUrl: string | null;
+	QrImage: string | null;
+	TransactionId: number;
+	MerchantOrderId?: string | null;
+	ProviderQrId?: string | null;
+	Amount: number;
+	Message?: string | null;
+	IsTest?: boolean;
+}
+
+export interface SbpBank {
+	id: string;
+	name: string;
+	logo: string;
+	url: string;
+}
+
+export interface SbpBankList {
+	Source: string;
+	Version: string;
+	Members: SbpBank[];
 }
 
 /** Возможные значения кода ответа ТСП на Check-уведомление. */

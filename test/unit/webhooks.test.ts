@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	verifyCheckWebhook,
 	verifyPayWebhook,
+	verifyReceiptWebhook,
 	verifyRecurrentWebhook,
 	verifyWebhook,
 } from "../../src/webhooks/index.js";
@@ -253,6 +254,32 @@ describe("verifyWebhook", () => {
 			reason: "bad_body",
 			stage: "signature_verification",
 			signatureVerified: false,
+		});
+	});
+
+	test("preserves leading zeroes in CloudKassir receipt identifiers", async () => {
+		const receipt = encodeURIComponent(
+			JSON.stringify({ Items: [{ label: "Товар", price: 10, quantity: 1, amount: 10 }] }),
+		);
+		const body =
+			`Id=receipt-1&DocumentNumber=12&SessionNumber=3&Number=4` +
+			`&FiscalSign=123&DeviceNumber=00000000000000000001&RegNumber=00001` +
+			`&FiscalNumber=9999078900005430&Inn=0770880606&Type=Income&Ofd=ofd` +
+			`&Url=https%3A%2F%2Freceipt.test&QrCodeUrl=https%3A%2F%2Fqr.test` +
+			`&Amount=10&DateTime=2026-08-24T10%3A00%3A00Z&Receipt=${receipt}`;
+		const sig = await makeSig(API_SECRET, body);
+
+		const payload = await verifyReceiptWebhook({
+			rawBody: body,
+			signature: sig,
+			apiSecret: API_SECRET,
+		});
+
+		expect(payload.DeviceNumber).toBe("00000000000000000001");
+		expect(payload.Inn).toBe("0770880606");
+		expect(payload.DocumentNumber).toBe(12);
+		expect(payload.Receipt).toEqual({
+			Items: [{ label: "Товар", price: 10, quantity: 1, amount: 10 }],
 		});
 	});
 });
