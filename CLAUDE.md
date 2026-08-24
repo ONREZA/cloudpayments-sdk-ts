@@ -102,6 +102,7 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 - **Origin ownership**: generated endpoints — относительные paths. `CloudPaymentsClient.baseUrl` выбирает RU/EU/KZ; абсолютный URL другого origin и HTTP redirects отклоняются до отправки Basic credentials.
 - **AbortError** пользователя пробрасывается как есть; timeout безопасной операции заворачивается в `CloudPaymentsNetworkError`.
 - **Webhook verify**: `Content-HMAC` считается по encoded body, `X-Content-HMAC` — по URL-decoded body. Form parser использует отдельную схему каждого типа уведомления; идентификаторы и части номера карты остаются строками.
+- **TypeScript toolchain**: прямой typecheck запускается нативным TypeScript 7 через alias `@typescript/native`; `tsdown` использует TypeScript 6 с совместимым compiler API для DTS. Не объединять зависимости, пока tooling не поддерживает API TypeScript 7 без experimental warning.
 
 ## Тип-система
 
@@ -131,6 +132,8 @@ CP шлёт POST с HMAC-SHA256 в заголовке `Content-HMAC` или `X-C
 Первый подписывает encoded body, второй — URL-decoded body.
 `WebhookVerificationError.signatureVerified` становится `true` только после
 успешного HMAC: authenticated parse failure можно retry, mismatch подписи — нет.
+Typed helpers дополнительно проверяют наличие обязательных полей и runtime-форму
+чисел, boolean и JSON; generic `verifyWebhook<T>` выполняет только coercion.
 
 ```ts
 import { verifyCheckWebhook, WebhookVerificationError } from "@onreza/cloudpayments-sdk/webhooks";

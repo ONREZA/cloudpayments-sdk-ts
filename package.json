@@ -75,7 +75,7 @@
 		"test": "bun test test/unit",
 		"test:integration": "bun test test/integration",
 		"test:all": "bun test",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "node ./node_modules/@typescript/native/bin/tsc --noEmit --stableTypeOrdering --checkers 1",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
@@ -92,10 +92,11 @@
 	"dependencies": {},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.10",
+		"@typescript/native": "npm:typescript@^7.0.2",
 		"@types/bun": "^1.4.0",
 		"cheerio": "^1.2.0",
 		"lefthook": "^2.1.10",
 		"tsdown": "^0.22.14",
-		"typescript": "^7.0.2"
+		"typescript": "^6.0.3"
 	}
 }
