@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.3.0...v0.3.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* **types:** narrow documented api values ([d5865f9](https://github.com/ONREZA/cloudpayments-sdk-ts/commit/d5865f9b04100db665feca365391bc7ef4741f91))
+
 ## [0.3.0](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.2.1...v0.3.0) (2026-08-24)
 
 
