@@ -26,8 +26,10 @@ async function sign(secret: string, body: string): Promise<string> {
 describe.skipIf(!HAS_CREDS)("integration: webhooks e2e", () => {
 	test("roundtrip form-urlencoded Check notification", async () => {
 		const body =
-			"TransactionId=42&Amount=100.50&Currency=RUB&Status=Completed&TestMode=1" +
-			"&Email=test%40example.com&CardFirstSix=424242&CardLastFour=4242";
+			"TransactionId=42&Amount=100.50&Currency=RUB&PaymentAmount=100.50" +
+			"&PaymentCurrency=RUB&DateTime=2026-08-24T10%3A00%3A00Z&Status=Completed" +
+			"&OperationType=Payment&TestMode=1&Email=test%40example.com" +
+			"&CardFirstSix=424242&CardLastFour=4242&CardType=Visa&CardExpDate=12%2F30";
 		const sig = await sign(CP_TEST_API_SECRET, body);
 
 		const payload = await verifyCheckWebhook({

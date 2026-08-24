@@ -24,6 +24,46 @@ async function makeSig(secret: string, body: string): Promise<string> {
 	return btoa(bin);
 }
 
+function payBody(overrides: Record<string, string> = {}): string {
+	const params = new URLSearchParams({
+		TransactionId: "123",
+		Amount: "10.5",
+		Currency: "RUB",
+		PaymentAmount: "10.50",
+		PaymentCurrency: "RUB",
+		DateTime: "2026-08-24T10:00:00Z",
+		CardFirstSix: "424242",
+		CardLastFour: "4242",
+		CardType: "Visa",
+		CardExpDate: "12/30",
+		TestMode: "1",
+		Status: "Completed",
+		OperationType: "Payment",
+		GatewayName: "Test",
+		...overrides,
+	});
+	return params.toString();
+}
+
+function recurrentBody(overrides: Record<string, string> = {}): string {
+	return new URLSearchParams({
+		Id: "subscription-1",
+		AccountId: "account-1",
+		Description: "Subscription",
+		Email: "customer@example.test",
+		Amount: "10",
+		Currency: "RUB",
+		RequireConfirmation: "true",
+		StartDate: "2026-08-24T10:00:00Z",
+		Interval: "Month",
+		Period: "1",
+		Status: "Active",
+		SuccessfulTransactionsNumber: "0",
+		FailedTransactionsNumber: "0",
+		...overrides,
+	}).toString();
+}
+
 describe("verifyWebhook", () => {
 	test("throws on missing signature", async () => {
 		await expect(
@@ -51,8 +91,10 @@ describe("verifyWebhook", () => {
 
 	test("parses form-urlencoded body on valid signature", async () => {
 		const body =
-			"TransactionId=123&Amount=10.5&PaymentAmount=10.50&TestMode=1&Status=Completed" +
+			"TransactionId=123&Amount=10.5&Currency=RUB&PaymentAmount=10.50&PaymentCurrency=RUB" +
+			"&DateTime=2026-08-24T10%3A00%3A00Z&TestMode=1&Status=Completed&OperationType=Payment" +
 			"&AccountId=000123&InvoiceId=000456&CardFirstSix=012345&CardLastFour=0007" +
+			"&CardType=Visa&CardExpDate=12%2F30" +
 			"&Data=%7B%22source%22%3A%22sdk%22%7D";
 		const sig = await makeSig(API_SECRET, body);
 		const payload = await verifyCheckWebhook({
@@ -159,7 +201,10 @@ describe("verifyWebhook", () => {
 	});
 
 	test("omits empty optional numeric fields from a signed Pay webhook", async () => {
-		const body = "TransactionId=123&ProcessorAndPartnerFee=&FallBackScenarioDeclinedTransactionId=";
+		const body = payBody({
+			ProcessorAndPartnerFee: "",
+			FallBackScenarioDeclinedTransactionId: "",
+		});
 		const sig = await makeSig(API_SECRET, body);
 
 		const payload = await verifyPayWebhook({
@@ -174,7 +219,7 @@ describe("verifyWebhook", () => {
 	});
 
 	test("preserves zero in an optional numeric field", async () => {
-		const body = "ProcessorAndPartnerFee=0";
+		const body = payBody({ ProcessorAndPartnerFee: "0" });
 		const sig = await makeSig(API_SECRET, body);
 
 		const payload = await verifyPayWebhook({
@@ -188,9 +233,9 @@ describe("verifyWebhook", () => {
 
 	test("does not omit malformed optional field values", async () => {
 		for (const body of [
-			"ProcessorAndPartnerFee=%20",
-			"ProcessorAndPartnerFee=invalid",
-			"Data=%7B",
+			payBody({ ProcessorAndPartnerFee: " " }),
+			payBody({ ProcessorAndPartnerFee: "invalid" }),
+			payBody({ Data: "{" }),
 		]) {
 			const sig = await makeSig(API_SECRET, body);
 
@@ -209,7 +254,7 @@ describe("verifyWebhook", () => {
 	});
 
 	test("rejects an empty required numeric field after signature verification", async () => {
-		const body = "TransactionId=";
+		const body = payBody({ TransactionId: "" });
 		const sig = await makeSig(API_SECRET, body);
 
 		await expect(
@@ -226,7 +271,7 @@ describe("verifyWebhook", () => {
 	});
 
 	test("rejects an empty required boolean field after signature verification", async () => {
-		const body = "RequireConfirmation=";
+		const body = recurrentBody({ RequireConfirmation: "" });
 		const sig = await makeSig(API_SECRET, body);
 
 		await expect(
@@ -240,6 +285,50 @@ describe("verifyWebhook", () => {
 			stage: "body_parsing",
 			signatureVerified: true,
 		});
+	});
+
+	test("rejects a signed typed webhook with missing required fields", async () => {
+		const body = "TransactionId=123";
+		const sig = await makeSig(API_SECRET, body);
+
+		await expect(
+			verifyPayWebhook({ rawBody: body, signature: sig, apiSecret: API_SECRET }),
+		).rejects.toMatchObject({ reason: "bad_body", signatureVerified: true });
+	});
+
+	test("rejects duplicate known fields and invalid bit values", async () => {
+		for (const body of [`${payBody()}&TransactionId=456`, payBody({ TestMode: "2" })]) {
+			const sig = await makeSig(API_SECRET, body);
+			await expect(
+				verifyPayWebhook({ rawBody: body, signature: sig, apiSecret: API_SECRET }),
+			).rejects.toMatchObject({ reason: "bad_body", signatureVerified: true });
+		}
+	});
+
+	test("validates typed JSON webhook payload shapes", async () => {
+		const body = JSON.stringify({ TransactionId: "123" });
+		const sig = await makeSig(API_SECRET, body);
+
+		await expect(
+			verifyPayWebhook({
+				rawBody: body,
+				signature: sig,
+				apiSecret: API_SECRET,
+				contentType: "application/json",
+			}),
+		).rejects.toMatchObject({ reason: "bad_body", signatureVerified: true });
+	});
+
+	test("omits an empty optional JSON field", async () => {
+		const body = payBody({ Data: "" });
+		const sig = await makeSig(API_SECRET, body);
+		const payload = await verifyPayWebhook({
+			rawBody: body,
+			signature: sig,
+			apiSecret: API_SECRET,
+		});
+
+		expect("Data" in payload).toBe(false);
 	});
 
 	test("does not authenticate a malformed X-Content-HMAC body", async () => {

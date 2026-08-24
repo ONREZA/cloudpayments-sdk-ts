@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { getDocsSource } from "./docs-sources.js";
 
@@ -11,6 +11,7 @@ const RAW_PATH = source.rawPath;
 const PREV_PATH = source.previousRawPath;
 
 const MIN_SIZE = 100_000;
+const FETCH_TIMEOUT_MS = 30_000;
 
 async function sha256(path: string): Promise<string | null> {
 	if (!existsSync(path)) return null;
@@ -22,6 +23,7 @@ async function main() {
 	console.log(`→ Fetching ${source.label}: ${DOCS_URL}`);
 	const res = await fetch(DOCS_URL, {
 		headers: { "User-Agent": "onreza/cloudpayments-sdk scrape" },
+		signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
 	});
 	if (!res.ok) {
 		console.error(`✗ Failed: HTTP ${res.status} ${res.statusText}`);
@@ -48,9 +50,7 @@ async function main() {
 
 	if (currentHash === newHash) {
 		console.log("✓ No changes (sha256 match)");
-		await Bun.file(tmpPath)
-			.delete?.()
-			.catch(() => {});
+		await rm(tmpPath, { force: true });
 		process.exit(0);
 	}
 
@@ -60,9 +60,7 @@ async function main() {
 	}
 
 	await copyFile(tmpPath, RAW_PATH);
-	await Bun.file(tmpPath)
-		.delete?.()
-		.catch(() => {});
+	await rm(tmpPath, { force: true });
 
 	const sizeKB = Math.round(html.length / 1024);
 	console.log(`✓ Updated ${source.rawPath} (${sizeKB}KB, sha256 ${newHash?.slice(0, 12)}…)`);

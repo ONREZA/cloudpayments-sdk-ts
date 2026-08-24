@@ -45,7 +45,7 @@ import {
 	PAYMENTS_TEST_URL,
 	PAYMENTS_VOID_URL,
 } from "../_generated/endpoints.js";
-import { CloudPaymentsBusinessError } from "../errors/index.js";
+import { CloudPaymentsBusinessError, CloudPaymentsSdkError } from "../errors/index.js";
 import type { Chargeback, TokenRecord, Transaction } from "../types.js";
 import { BaseModule, type ExecOptions } from "./base.js";
 
@@ -62,7 +62,8 @@ export class PaymentsModule extends BaseModule {
 			{ ...opts, replaySafety: "safe" },
 		);
 		if (!env.Success) throw new CloudPaymentsBusinessError(env.Message ?? "", null, undefined);
-		return env.Message ?? "";
+		if (!env.Message) throw new CloudPaymentsSdkError("CloudPayments test response has no Message");
+		return env.Message;
 	}
 
 	/** Одностадийная оплата по криптограмме. Бросает 3DsRequiredError при необходимости 3DS. */
@@ -112,12 +113,16 @@ export class PaymentsModule extends BaseModule {
 
 	/** Подтверждение двухстадийного платежа (списание после auth). */
 	confirm(body: PaymentsConfirmRequest, opts?: ExecOptions): Promise<void> {
-		return this.exec<PaymentsConfirmRequest, void>(PAYMENTS_CONFIRM_URL, body, opts);
+		return this.exec<PaymentsConfirmRequest, void>(PAYMENTS_CONFIRM_URL, body, opts, {
+			allowMissingModel: true,
+		});
 	}
 
 	/** Отмена авторизации (до confirm). */
 	void(body: PaymentsVoidRequest, opts?: ExecOptions): Promise<void> {
-		return this.exec<PaymentsVoidRequest, void>(PAYMENTS_VOID_URL, body, opts);
+		return this.exec<PaymentsVoidRequest, void>(PAYMENTS_VOID_URL, body, opts, {
+			allowMissingModel: true,
+		});
 	}
 
 	/** Возврат денег по завершённой транзакции. */

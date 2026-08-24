@@ -4,7 +4,7 @@
  */
 
 import type { Currency, CultureName, FiscalDataOperator } from "./handbooks.js";
-import type { Payer, CloudPaymentsMeta, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem } from "../models.js";
+import type { Payer, CloudPaymentsJsonData, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem } from "../models.js";
 
 /**
  * Метод для получения информации по БС для обоих типов сделки (N:1 и 1:N)
@@ -58,7 +58,7 @@ export interface PaymentsChargeCryptogramRequest {
 	/** Доп. поле, куда передается информация о плательщике. Используйте следующие параметры: `FirstName`, `LastName`, `MiddleName`, `Birth`, `Street`, `Address`, `City`, `Country`, `Phone`, `Postcode` */
 	Payer?: Payer;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе инструкции для [создания подписки](#rekurrentnye-platezhi-podpiska) или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate`. */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 	/** Признак сохранения карточного токена для проведения оплаты по сохранённой карте (см. [Оплата по токену (рекарринг)](#oplata-po-tokenu-rekarring)). Возможные значения: `true` - после успешной оплаты будет возвращён карточный токен, `false` - токен не будет возвращаться (по-умолчанию) Параметр SaveCard обрабатывается только при включении настройки "Сохранение токена карты" в Личном Кабинете. При включении настройки "Сохранять принудительно", параметр SaveCard будет игнорироваться. */
 	SaveCard?: boolean;
 }
@@ -96,7 +96,7 @@ export interface PaymentsAuthCryptogramRequest {
 	/** Доп. поле, куда передается информация о плательщике. Используйте следующие параметры: `FirstName`, `LastName`, `MiddleName`, `Birth`, `Street`, `Address`, `City`, `Country`, `Phone`, `Postcode` */
 	Payer?: Payer;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе инструкции для [создания подписки](#rekurrentnye-platezhi-podpiska) или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate`. */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 	/** Признак сохранения карточного токена для проведения оплаты по сохранённой карте (см. [Оплата по токену (рекарринг)](#oplata-po-tokenu-rekarring)). Возможные значения: `true` - после успешной оплаты будет возвращён карточный токен, `false` - токен не будет возвращаться (по-умолчанию) Параметр SaveCard обрабатывается только при включении настройки "Сохранение токена карты" в Личном Кабинете. При включении настройки "Сохранять принудительно", параметр SaveCard будет игнорироваться. */
 	SaveCard?: boolean;
 }
@@ -145,7 +145,7 @@ export interface PaymentsChargeTokenRequest {
 	/** Доп. поле, куда передается информация о плательщике. Используйте следующие параметры: `FirstName`, `LastName`, `MiddleName`, `Birth`, `Street`, `Address`, `City`, `Country`, `Phone`, `Postcode` */
 	Payer?: Payer;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе инструкции для [создания подписки](#rekurrentnye-platezhi-podpiska) или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate`. */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 }
 
 export const PAYMENTS_CHARGE_TOKEN_URL = "/payments/tokens/charge" as const;
@@ -179,7 +179,7 @@ export interface PaymentsAuthTokenRequest {
 	/** Доп. поле, куда передается информация о плательщике. Используйте следующие параметры: `FirstName`, `LastName`, `MiddleName`, `Birth`, `Street`, `Address`, `City`, `Country`, `Phone`, `Postcode` */
 	Payer?: Payer;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе инструкции для [создания подписки](#rekurrentnye-platezhi-podpiska) или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate`. */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 }
 
 export const PAYMENTS_AUTH_TOKEN_URL = "/payments/tokens/auth" as const;
@@ -195,7 +195,7 @@ export interface PaymentsConfirmRequest {
 	/** Сумма подтверждения в валюте транзакции, разделитель точка. Количество не нулевых знаков после точки – 2. */
 	Amount: number;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе инструкции для формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 }
 
 export const PAYMENTS_CONFIRM_URL = "/payments/confirm" as const;
@@ -223,7 +223,7 @@ export interface PaymentsRefundRequest {
 	/** Сумма возврата в валюте транзакции, разделитель точка. Количество не нулевых знаков после точки – 2. */
 	Amount: number;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе инструкции для формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 }
 
 export const PAYMENTS_REFUND_URL = "/payments/refund" as const;
@@ -247,7 +247,7 @@ export interface PaymentsPayoutCryptogramRequest {
 	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
 	Email?: string;
 	/** Любые другие данные, которые будут связаны с транзакцией. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate`. */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 	/** Номер заказа в вашей системе */
 	InvoiceId?: string;
 	/** Описание оплаты в свободной форме */
@@ -255,7 +255,7 @@ export interface PaymentsPayoutCryptogramRequest {
 	/** Доп. поле, куда передается информация о плательщике */
 	Payer?: Payer;
 	/** Доп. поле, куда передается информация о получателе */
-	Receiver?: Record<string, unknown>;
+	Receiver?: Payer;
 }
 
 export const PAYMENTS_PAYOUT_CRYPTOGRAM_URL = "/payments/cards/topup" as const;
@@ -279,7 +279,7 @@ export interface PaymentsPayoutTokenRequest {
 	/** Доп. поле, куда передается информация о плательщике */
 	Payer?: Payer;
 	/** Доп. поле, куда передается информация о получателе */
-	Receiver?: Record<string, unknown>;
+	Receiver?: Payer;
 }
 
 export const PAYMENTS_PAYOUT_TOKEN_URL = "/payments/token/topup" as const;
@@ -309,9 +309,7 @@ export interface PaymentsPayoutSbpRequest {
 	/** Доп. поле, куда передается информация о плательщике. Используйте следующие параметры: `FirstName`, `LastName`, `MiddleName`, `Birth`, `Street`, `Address`, `City`, `Country`, `Phone`, `Postcode` */
 	Payer?: Payer;
 	/** Доп. поле, куда передается информация о получателе */
-	Receiver: Record<string, unknown>;
-	/** Для выплаты по СБП необходимо указать номер получателя средств */
-	"Receiver.Phone": string;
+	Receiver: Payer & { Phone: string };
 }
 
 export const PAYMENTS_PAYOUT_SBP_URL = "/payments/alt/topup" as const;
@@ -555,7 +553,7 @@ export interface OrdersCreateRequest {
 	/** Адрес страницы для редиректа при неуспешной оплате */
 	FailRedirectUrl?: string;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе инструкции для формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments` */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 }
 
 export const ORDERS_CREATE_URL = "/orders/create" as const;
@@ -642,7 +640,7 @@ export interface TPayCreateLinkRequest {
 	/** Назначение платежа в свободной форме */
 	Description?: string;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 	/** Время в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Если параметр не передан, оплату можно будет совершить в течение 24 часов. **Важно:** - Значение 0 считается **некорректным** и может привести к ошибке обработки запроса. - Если временное ограничение не требуется, параметр следует **не передавать** или явно указать как `null`. */
 	TtlMinutes?: number | null;
 	/** Признак сохранения карточного токена для проведения оплаты по сохранённой карте (см. [Оплата по токену (рекарринг)](#oplata-po-tokenu-rekarring)). Возможные значения: `true` - после успешной оплаты будет возвращён карточный токен, `false` - токен не будет возвращаться (по-умолчанию) Параметр SaveCard обрабатывается только при включении настройки "Сохранение токена карты" в Личном Кабинете. При включении настройки "Сохранять принудительно", параметр SaveCard будет игнорироваться. */
@@ -687,7 +685,7 @@ export interface TPayCreateQrImageRequest {
 	/** Назначение платежа в свободной форме */
 	Description?: string;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 	/** Время в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Если параметр не передан, оплату можно будет совершить в течение 24 часов. **Важно:** - Значение 0 считается **некорректным** и может привести к ошибке обработки запроса. - Если временное ограничение не требуется, параметр следует **не передавать** или явно указать как `null`. */
 	TtlMinutes?: number | null;
 	/** Признак сохранения карточного токена для проведения оплаты по сохранённой карте (см. [Оплата по токену (рекарринг)](#oplata-po-tokenu-rekarring)). Возможные значения: `true` - после успешной оплаты будет возвращён карточный токен, `false` - токен не будет возвращаться (по-умолчанию) Параметр SaveCard обрабатывается только при включении настройки "Сохранение токена карты" в Личном Кабинете. При включении настройки "Сохранять принудительно", параметр SaveCard будет игнорироваться. */
@@ -714,7 +712,7 @@ export interface SbpCreateLinkRequest {
 	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
 	Email?: string;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 	/** Идентификатор/номер счета. Приходит в Check-уведомлении и может использоваться для сверки номера заказа */
 	InvoiceId?: string;
 	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `charge` - одностадийная оплата */
@@ -759,7 +757,7 @@ export interface SbpCreateQrImageRequest {
 	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
 	Email?: string;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 	/** Идентификатор/номер счета. Приходит в Check-уведомлении и может использоваться для сверки номера заказа */
 	InvoiceId?: string;
 	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `charge` - одностадийная оплата */
@@ -820,7 +818,7 @@ export interface SberPayCreateLinkRequest {
 	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
 	Email?: string;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 	/** Идентификатор/номер счета. Приходит в Check-уведомлении и может использоваться для сверки номера заказа */
 	InvoiceId?: string;
 	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `charge` - одностадийная оплата; `auth` - двухстадийная оплата */
@@ -859,7 +857,7 @@ export interface SberPayCreateQrImageRequest {
 	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
 	Email?: string;
 	/** Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate` */
-	JsonData?: Record<string, unknown>;
+	JsonData?: CloudPaymentsJsonData;
 	/** Идентификатор/номер счета. Приходит в Check-уведомлении и может использоваться для сверки номера заказа */
 	InvoiceId?: string;
 	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `charge` - одностадийная оплата; `auth` - двухстадийная оплата */

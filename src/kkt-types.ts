@@ -1,10 +1,4 @@
-import type {
-	KktAgentSign,
-	KktReceiptType,
-	KktTaxationSystem,
-	KktVatRate,
-	ReceiptAmounts,
-} from "./models.js";
+import type { KktAgentSign, KktReceiptType, KktTaxationSystem, KktVatRate } from "./models.js";
 
 export type KktReceiptStatus = "Processed" | "Error" | "Queued" | "NotFound";
 
@@ -92,19 +86,26 @@ export interface KktReceiptDetails {
 	Phone: string | null;
 	Items: KktReceiptDetailsItem[];
 	TaxationSystem: KktTaxationSystem;
-	Amounts: ReceiptAmounts | null;
+	Amounts: KktReceiptAmounts | null;
 	IsBso: boolean;
 	AdditionalData: KktReceiptFiscalData;
 }
 
-export interface KktCorrectionReceiptAmounts {
-	Electronic: number;
-	Cash: number;
-	AdvancePayment: number;
-	Credit: number;
-	Provision: number;
+export interface KktReceiptAmounts {
+	Electronic?: number;
+	Cash?: number;
+	AdvancePayment?: number;
+	Credit?: number;
+	Provision?: number;
+	Sum?: number;
+}
+
+export interface KktCorrectionReceiptAmounts extends KktReceiptAmounts {
 	Sum: number;
 }
+
+/** CloudKassir также возвращает legacy-код `1` в документированном ответе коррекции. */
+export type KktCorrectionReceiptVatRate = KktVatRate | 1;
 
 export interface KktCorrectionReceiptDetails {
 	Status: KktReceiptStatus;
@@ -115,7 +116,7 @@ export interface KktCorrectionReceiptDetails {
 	TaxationSystem: KktTaxationSystem;
 	CorrectionType: 0 | 1;
 	CorrectionReceiptType: 1 | 2 | 3 | 4;
-	VatRate: KktVatRate;
+	VatRate: KktCorrectionReceiptVatRate;
 	CorrectionDate: string;
 	CorrectionNumber: string;
 	Id: string;

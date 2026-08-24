@@ -65,12 +65,6 @@ export interface CodeBlock {
 
 /* ───────────────── Paths ───────────────── */
 
-const source = getDocsSource(process.argv[2]);
-const RAW_PATH = source.rawPath;
-const IR_PATH = source.irPath;
-const IR_PREV_PATH = source.previousIrPath;
-const DOCS_URL = source.url;
-
 /* ───────────────── HTML → Markdown ───────────────── */
 
 const _BLOCK_TAGS = new Set([
@@ -563,24 +557,38 @@ function buildGroup(block: HeadingBlock, $: CheerioAPI): Group {
 	};
 }
 
+/** Чистое преобразование HTML документации в IR, используемое CLI и тестами. */
+export function parseHtml(html: string, docsUrl: string): IR {
+	const $ = load(html);
+	const blocks = walkToHeadingBlocks($);
+	return {
+		source: {
+			url: docsUrl,
+			htmlSha256: createHash("sha256").update(html).digest("hex"),
+			htmlSize: html.length,
+		},
+		sections: buildTree(blocks, $),
+	};
+}
+
 /* ───────────────── Main ───────────────── */
 
 async function main() {
-	if (!existsSync(RAW_PATH)) {
-		console.error(`✗ ${RAW_PATH} not found. Run \`bun run docs:scrape ${source.name}\` first.`);
+	const source = getDocsSource(process.argv[2]);
+	const rawPath = source.rawPath;
+	const irPath = source.irPath;
+	const previousIrPath = source.previousIrPath;
+
+	if (!existsSync(rawPath)) {
+		console.error(`✗ ${rawPath} not found. Run \`bun run docs:scrape ${source.name}\` first.`);
 		process.exit(1);
 	}
 
-	const html = await readFile(RAW_PATH, "utf8");
-	const htmlSha256 = createHash("sha256").update(html).digest("hex");
+	const html = await readFile(rawPath, "utf8");
 
 	console.log(`→ Parsing ${source.label} docs (${Math.round(html.length / 1024)}KB)`);
-
-	const $ = load(html);
-	const blocks = walkToHeadingBlocks($);
-	console.log(`  ${blocks.length} heading blocks found`);
-
-	const sections = buildTree(blocks, $);
+	const ir = parseHtml(html, source.url);
+	const { sections } = ir;
 
 	// Stats
 	const groupCount = sections.reduce((acc, s) => acc + s.groups.length, 0);
@@ -596,20 +604,11 @@ async function main() {
 	);
 	console.log(`  ${sections.length} sections, ${groupCount} groups, ${endpointCount} endpoints`);
 
-	const ir: IR = {
-		source: {
-			url: DOCS_URL,
-			htmlSha256,
-			htmlSize: html.length,
-		},
-		sections,
-	};
-
-	if (existsSync(IR_PATH)) {
-		await copyFile(IR_PATH, IR_PREV_PATH);
+	if (existsSync(irPath)) {
+		await copyFile(irPath, previousIrPath);
 	}
-	await writeFile(IR_PATH, `${JSON.stringify(ir, null, 2)}\n`);
-	console.log(`✓ Wrote ${IR_PATH}`);
+	await writeFile(irPath, `${JSON.stringify(ir, null, 2)}\n`);
+	console.log(`✓ Wrote ${irPath}`);
 }
 
-await main();
+if (import.meta.main) await main();

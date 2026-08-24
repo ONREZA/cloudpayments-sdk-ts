@@ -120,4 +120,26 @@ describe("KktModule", () => {
 			CloudPaymentsSdkError,
 		);
 	});
+
+	test("rejects a successful fiscalization response without Message", async () => {
+		const client = new CloudPaymentsClient({
+			...credentials,
+			retry: { maxAttempts: 1 },
+			fetch: (async () => response({ Success: true, Message: null })) as unknown as typeof fetch,
+		});
+
+		await expect(
+			client.kkt.fiscalize({
+				Inn: "7700000000",
+				DeviceNumber: "device-1",
+				FiscalNumber: "fiscal-1",
+				RegNumber: "reg-1",
+				Url: "https://merchant.test",
+				Ofd: "FirstOfd",
+				TaxationSystem: [0],
+				MerchantEmail: "merchant@example.test",
+				MerchantPhone: "+71234567890",
+			}),
+		).rejects.toBeInstanceOf(CloudPaymentsSdkError);
+	});
 });

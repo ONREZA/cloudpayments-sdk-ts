@@ -15,6 +15,8 @@ export class OrdersModule extends BaseModule {
 
 	/** Отменить созданный счёт. */
 	cancel(body: OrdersCancelRequest, opts?: ExecOptions): Promise<void> {
-		return this.exec<OrdersCancelRequest, void>(ORDERS_CANCEL_URL, body, opts);
+		return this.exec<OrdersCancelRequest, void>(ORDERS_CANCEL_URL, body, opts, {
+			allowMissingModel: true,
+		});
 	}
 }

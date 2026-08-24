@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { ENDPOINTS } from "../../src/_generated/endpoints.js";
 import { CloudPaymentsClient } from "../../src/client.js";
 import { CloudPaymentsHttpClient } from "../../src/core/http.js";
 import {
 	CloudPayments3DsRequiredError,
 	CloudPaymentsBusinessError,
+	CloudPaymentsSdkError,
 } from "../../src/errors/index.js";
 import { PaymentsModule } from "../../src/modules/payments.js";
 import { SettingsModule } from "../../src/modules/settings.js";
@@ -24,6 +26,16 @@ describe("PaymentsModule", () => {
 		const payments = new PaymentsModule(http);
 		const res = await payments.test();
 		expect(res).toBe("guid-123");
+	});
+
+	test("test() rejects a successful response without Message", async () => {
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxAttempts: 1 },
+			fetch: mockFetchReturning({ Success: true, Message: null }),
+		});
+
+		await expect(new PaymentsModule(http).test()).rejects.toBeInstanceOf(CloudPaymentsSdkError);
 	});
 
 	test("generated paths use baseUrl and preserve notification placeholders", async () => {
@@ -135,9 +147,31 @@ describe("PaymentsModule", () => {
 		const res = await payments.confirm({ TransactionId: 1, Amount: 1 });
 		expect(res).toBeUndefined();
 	});
+
+	test("model-returning methods reject a successful envelope without Model", async () => {
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxAttempts: 1 },
+			fetch: mockFetchReturning({ Success: true, Message: null }),
+		});
+
+		await expect(new PaymentsModule(http).find({ InvoiceId: "order-1" })).rejects.toBeInstanceOf(
+			CloudPaymentsSdkError,
+		);
+	});
 });
 
 describe("generated API surface", () => {
+	test("every generated endpoint has a public client method", () => {
+		const client = new CloudPaymentsClient({ ...creds, retry: { maxAttempts: 1 } });
+		for (const [moduleName, endpoints] of Object.entries(ENDPOINTS)) {
+			const sdkModule = client[moduleName as keyof CloudPaymentsClient] as object;
+			for (const methodName of Object.keys(endpoints)) {
+				expect(typeof (sdkModule as Record<string, unknown>)[methodName]).toBe("function");
+			}
+		}
+	});
+
 	test("client modules call the newly covered official endpoints", async () => {
 		const urls: string[] = [];
 		const client = new CloudPaymentsClient({

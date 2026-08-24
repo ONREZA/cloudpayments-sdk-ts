@@ -1,5 +1,9 @@
 import type { CloudPaymentsHttpClient, PostOptions, RequestReplaySafety } from "../core/http.js";
-import { CloudPayments3DsRequiredError, CloudPaymentsBusinessError } from "../errors/index.js";
+import {
+	CloudPayments3DsRequiredError,
+	CloudPaymentsBusinessError,
+	CloudPaymentsSdkError,
+} from "../errors/index.js";
 import type { ApiEnvelope } from "../types.js";
 
 export type ExecOptions = Omit<PostOptions, "replaySafety">;
@@ -7,6 +11,7 @@ export type ExecOptions = Omit<PostOptions, "replaySafety">;
 interface ExecBehavior {
 	detect3ds?: boolean;
 	replaySafety?: RequestReplaySafety;
+	allowMissingModel?: boolean;
 }
 
 export abstract class BaseModule {
@@ -27,14 +32,17 @@ export abstract class BaseModule {
 			...opts,
 			replaySafety: behavior.replaySafety ?? "requires-idempotency",
 		});
-		return this.unwrap(env, behavior.detect3ds ?? false);
+		return this.unwrap(env, behavior.detect3ds ?? false, behavior.allowMissingModel ?? false);
 	}
 
 	/** Универсальная распаковка envelope. */
-	protected unwrap<T>(env: ApiEnvelope<T>, detect3ds: boolean): T {
+	protected unwrap<T>(env: ApiEnvelope<T>, detect3ds: boolean, allowMissingModel = false): T {
 		if (env.Success) {
-			// Model может отсутствовать у void-методов — возвращаем undefined as T.
-			return (env.Model ?? (undefined as T)) as T;
+			if (env.Model === undefined || env.Model === null) {
+				if (allowMissingModel) return undefined as T;
+				throw new CloudPaymentsSdkError("CloudPayments successful response has no Model");
+			}
+			return env.Model;
 		}
 		if (detect3ds && is3DsChallenge(env.Model)) {
 			const m = env.Model;

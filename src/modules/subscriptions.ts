@@ -61,6 +61,8 @@ export class SubscriptionsModule extends BaseModule {
 
 	/** Отменить подписку. */
 	cancel(body: SubscriptionsCancelRequest, opts?: ExecOptions): Promise<void> {
-		return this.exec<SubscriptionsCancelRequest, void>(SUBSCRIPTIONS_CANCEL_URL, body, opts);
+		return this.exec<SubscriptionsCancelRequest, void>(SUBSCRIPTIONS_CANCEL_URL, body, opts, {
+			allowMissingModel: true,
+		});
 	}
 }

@@ -19,7 +19,8 @@ export interface Payer {
 export type KktReceiptType = "Income" | "IncomeReturn" | "Expense" | "ExpenseReturn";
 export type KktTaxationSystem = 0 | 1 | 2 | 3 | 4 | 5;
 export type KktVatRate = null | 0 | 5 | 7 | 10 | 20 | 22 | 105 | 107 | 110 | 120 | 122;
-export type KktPaymentMethod = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+/** `0` — историческое значение по умолчанию, которое по-прежнему принимает API. */
+export type KktPaymentMethod = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type KktPaymentObject =
 	| 0
 	| 1
@@ -182,7 +183,7 @@ export type KktReceipt =
 
 export interface KktCorrectionCause {
 	CorrectionDate: string;
-	CorrectionNumber: string;
+	CorrectionNumber: string | null;
 }
 
 export interface KktCorrectionReceiptData {
@@ -228,3 +229,8 @@ export interface CloudPaymentsMeta {
 	};
 	ShouldAuthenticate3DS?: boolean;
 }
+
+/** Произвольные JsonData с типизированным служебным namespace CloudPayments. */
+export type CloudPaymentsJsonData = Record<string, unknown> & {
+	cloudpayments?: CloudPaymentsMeta;
+};

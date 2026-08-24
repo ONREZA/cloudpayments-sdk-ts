@@ -70,7 +70,7 @@ const RECEIPT_STATUSES = new Set<KktReceiptStatus>(["Processed", "Error", "Queue
 export class KktModule extends BaseModule {
 	async fiscalize(body: KktFiscalizeRequest, opts?: ExecOptions): Promise<string> {
 		const env = await this.postEnvelope<undefined>(KKT_FISCALIZE_URL, body, opts);
-		return env.Message ?? "";
+		return requireMessage(env, "CloudKassir fiscalization");
 	}
 
 	async submitReceipt(
@@ -100,7 +100,7 @@ export class KktModule extends BaseModule {
 			...opts,
 			replaySafety: "safe",
 		});
-		this.unwrap(env, false);
+		this.unwrap(env, false, true);
 		if (typeof env.IsValid !== "boolean") {
 			throw new CloudPaymentsSdkError("CloudKassir mark-code response has no IsValid flag");
 		}
@@ -123,7 +123,7 @@ export class KktModule extends BaseModule {
 				replaySafety: "safe",
 			},
 		);
-		this.unwrap(env, false);
+		this.unwrap(env, false, true);
 		if (!Array.isArray(env.Results)) {
 			throw new CloudPaymentsSdkError("CloudKassir mark-codes response has no Results array");
 		}
@@ -162,7 +162,7 @@ export class KktModule extends BaseModule {
 		opts?: ExecOptions,
 	): Promise<string> {
 		const env = await this.postEnvelope<undefined>(KKT_UPDATE_CASH_REGISTER_STATE_URL, body, opts);
-		return env.Message ?? "";
+		return requireMessage(env, "CloudKassir cash-register state update");
 	}
 
 	async getCashRegisterState(
@@ -233,7 +233,7 @@ export class KktModule extends BaseModule {
 			...opts,
 			...(safe ? { replaySafety: "safe" as const } : {}),
 		});
-		this.unwrap(env, false);
+		this.unwrap(env, false, true);
 		return env;
 	}
 }
@@ -243,4 +243,9 @@ function requireModel<T>(env: ApiEnvelope<T>, contract: string): T {
 		throw new CloudPaymentsSdkError(`${contract} response has no Model`);
 	}
 	return env.Model;
+}
+
+function requireMessage(env: ApiEnvelope<unknown>, contract: string): string {
+	if (!env.Message) throw new CloudPaymentsSdkError(`${contract} response has no Message`);
+	return env.Message;
 }

@@ -41,6 +41,7 @@ export class SettingsModule extends BaseModule {
 			SETTINGS_UPDATE_NOTIFICATION_URL.replace("{Type}", type),
 			body,
 			opts,
+			{ allowMissingModel: true },
 		);
 	}
 }

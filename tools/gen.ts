@@ -454,10 +454,10 @@ function tsTypeFor(param: Param): string {
 function inferObjectType(param: Param): string {
 	const name = param.name.toLowerCase();
 	if (name === "payer") return "Payer";
+	if (name === "receiver") return "Payer";
 	if (name === "receipt") return "KktReceipt";
 	if (name === "customerreceipt") return "KktReceipt";
 	if (name === "correctionreceiptdata") return "KktCorrectionReceiptData";
-	if (name === "cloudpayments") return "CloudPaymentsMeta";
 	return "Record<string, unknown>";
 }
 
@@ -510,13 +510,11 @@ function writeHandbooks(ir: IR): string {
 	for (const spec of HANDBOOKS) {
 		const group = findGroupDeep(ir, spec.anchor);
 		if (!group) {
-			console.warn(`! handbook not found: ${spec.anchor}`);
-			continue;
+			throw new Error(`Handbook not found in IR: ${spec.anchor}`);
 		}
 		const table = group.tables[0];
 		if (!table) {
-			console.warn(`! handbook ${spec.anchor} has no tables`);
-			continue;
+			throw new Error(`Handbook has no tables in IR: ${spec.anchor}`);
 		}
 		parts.push(renderHandbook(spec, table, group.title));
 	}
@@ -702,7 +700,7 @@ function writeEndpoints(irs: IRBySource): string {
 	const parts: string[] = [HEADER];
 	parts.push(`import type { Currency, CultureName, FiscalDataOperator } from "./handbooks.js";`);
 	parts.push(
-		`import type { Payer, CloudPaymentsMeta, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem } from "../models.js";\n`,
+		`import type { Payer, CloudPaymentsJsonData, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem } from "../models.js";\n`,
 	);
 
 	for (const ep of endpoints) {
@@ -746,6 +744,9 @@ function renderRequestType(typeName: string, endpoint: ResolvedEndpoint): string
 	}
 	out.push(`export interface ${typeName} {\n`);
 	for (const p of params) {
+		const parentName = p.name.split(".", 1)[0];
+		if (parentName !== p.name && params.some((candidate) => candidate.name === parentName))
+			continue;
 		const tsType = tsTypeForNamed(p, endpoint.alias);
 		const optionalFlag = p.required ? "" : "?";
 		const desc = cleanDescription(p.description);
@@ -763,6 +764,10 @@ function tsTypeForNamed(param: Param, alias?: EndpointAlias): string {
 	if (name === "culturename" || name === "culture") return "CultureName";
 	if (name === "customerreceipt") return "KktReceipt";
 	if (name === "correctionreceiptdata") return "KktCorrectionReceiptData";
+	if (name === "jsondata" && /^json/i.test(param.type.trim())) return "CloudPaymentsJsonData";
+	if (alias?.module === "payments" && alias.methodName === "payoutSbp" && name === "receiver") {
+		return "Payer & { Phone: string }";
+	}
 	if (alias?.module === "kkt" && name === "type") return "KktReceiptType";
 	if (alias?.module === "kkt" && name === "taxationsystem") return "KktTaxationSystem[]";
 	if (alias?.module === "kkt" && name === "ofd") return "FiscalDataOperator";
@@ -833,7 +838,7 @@ function writeWebhookPayloads(irs: IRBySource): string {
 	return parts.join("\n");
 }
 
-type WebhookFieldKind = "string" | "number" | "boolean" | "json";
+type WebhookFieldKind = "string" | "number" | "bit" | "boolean" | "json-object" | "json-array";
 
 interface WebhookFieldSchema {
 	kind: WebhookFieldKind;
@@ -860,30 +865,29 @@ function renderWebhookFieldSchemas(irs: IRBySource): string {
 			if (existing) existing.optional &&= optional;
 			else fields.set(param.name, { kind, optional });
 		}
-		byType.push(`\t${spec.type}: ${renderWebhookSchemaObject(ownFields)},`);
+		byType.push(`\t${spec.type}: ${renderWebhookSchemaObject(ownFields, "\t")},`);
 	}
 
 	return `${jsDoc(["Runtime coercion schema для form-urlencoded webhook payload-ов."])}export const WEBHOOK_FIELD_SCHEMAS = ${renderWebhookSchemaObject(fields)} as const;\n\n${jsDoc(["Runtime coercion schemas для конкретных типов webhook payload-ов."])}export const WEBHOOK_FIELD_SCHEMAS_BY_TYPE = {\n${byType.join("\n")}\n} as const;\n`;
 }
 
-function renderWebhookSchemaObject(fields: Map<string, WebhookFieldSchema>): string {
+function renderWebhookSchemaObject(fields: Map<string, WebhookFieldSchema>, indent = ""): string {
 	const entries = [...fields]
-		.filter(([, field]) => field.kind !== "string")
 		.sort(([left], [right]) => left.localeCompare(right))
 		.map(
 			([name, field]) =>
-				`\t${fieldName(name)}: { kind: ${JSON.stringify(field.kind)}, optional: ${field.optional} },`,
+				`${indent}\t${fieldName(name)}: { kind: ${JSON.stringify(field.kind)}, optional: ${field.optional} },`,
 		)
 		.join("\n");
-	return `{\n${entries}\n}`;
+	return `{\n${entries}\n${indent}}`;
 }
 
 function webhookFieldKind(tsType: string): WebhookFieldKind {
-	if (tsType === "number" || tsType === "0 | 1") return "number";
+	if (tsType === "number") return "number";
+	if (tsType === "0 | 1") return "bit";
 	if (tsType === "boolean") return "boolean";
-	if (tsType === "Record<string, unknown>" || tsType === "unknown[]" || tsType === "KktReceipt") {
-		return "json";
-	}
+	if (tsType === "Record<string, unknown>" || tsType === "KktReceipt") return "json-object";
+	if (tsType === "unknown[]") return "json-array";
 	return "string";
 }
 

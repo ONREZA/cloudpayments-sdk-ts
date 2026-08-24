@@ -105,6 +105,7 @@ export async function verifyWebhook<T = AnyWebhookPayload>(input: VerifyWebhookI
 async function verifyWebhookWithSchema<T>(
 	input: VerifyWebhookInput,
 	fieldSchemas: Readonly<Record<string, WebhookFieldSchema>>,
+	validateContract = false,
 ): Promise<T> {
 	if (!input.signature) {
 		throw new WebhookVerificationError(
@@ -131,12 +132,17 @@ async function verifyWebhookWithSchema<T>(
 	}
 	if (contentType === "application/json") {
 		try {
-			return JSON.parse(bodyStr) as T;
+			const payload = JSON.parse(bodyStr) as unknown;
+			if (validateContract) validatePayload(payload, fieldSchemas);
+			return payload as T;
 		} catch (_err) {
+			if (_err instanceof WebhookVerificationError) throw _err;
 			throw bodyParsingError("Body is not valid JSON");
 		}
 	}
-	return parseFormUrlEncoded(bodyStr, fieldSchemas) as T;
+	const payload = parseFormUrlEncoded(bodyStr, fieldSchemas);
+	if (validateContract) validatePayload(payload, fieldSchemas);
+	return payload as T;
 }
 
 /**
@@ -152,21 +158,33 @@ export function checkResponse(code: 0 | 10 | 11 | 12 | 13 | 20 = 0): { code: typ
  * явные имена методов без generic-параметра — не надо помнить как называется тип.
  */
 export const verifyCheckWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhookWithSchema<CheckNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Check);
+	verifyWebhookWithSchema<CheckNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Check, true);
 export const verifyPayWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhookWithSchema<PayNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Pay);
+	verifyWebhookWithSchema<PayNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Pay, true);
 export const verifyFailWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhookWithSchema<FailNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Fail);
+	verifyWebhookWithSchema<FailNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Fail, true);
 export const verifyConfirmWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhookWithSchema<ConfirmNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Confirm);
+	verifyWebhookWithSchema<ConfirmNotificationPayload>(
+		i,
+		WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Confirm,
+		true,
+	);
 export const verifyRefundWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhookWithSchema<RefundNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Refund);
+	verifyWebhookWithSchema<RefundNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Refund, true);
 export const verifyRecurrentWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhookWithSchema<RecurrentNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Recurrent);
+	verifyWebhookWithSchema<RecurrentNotificationPayload>(
+		i,
+		WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Recurrent,
+		true,
+	);
 export const verifyCancelWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhookWithSchema<CancelNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Cancel);
+	verifyWebhookWithSchema<CancelNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Cancel, true);
 export const verifyReceiptWebhook = (i: VerifyWebhookInput) =>
-	verifyWebhookWithSchema<ReceiptNotificationPayload>(i, WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Receipt);
+	verifyWebhookWithSchema<ReceiptNotificationPayload>(
+		i,
+		WEBHOOK_FIELD_SCHEMAS_BY_TYPE.Receipt,
+		true,
+	);
 
 /* ───────────────────── Internals ───────────────────── */
 
@@ -211,7 +229,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 const OMIT_FORM_FIELD = Symbol("omit-form-field");
 
 interface WebhookFieldSchema {
-	readonly kind: "number" | "boolean" | "json";
+	readonly kind: "string" | "number" | "bit" | "boolean" | "json-object" | "json-array";
 	readonly optional: boolean;
 }
 
@@ -225,6 +243,7 @@ function parseFormUrlEncoded(
 		const val = parseFormValue(key, rawVal, fieldSchemas);
 		if (val === OMIT_FORM_FIELD) continue;
 		if (key in result) {
+			if (fieldSchemas[key]) throw bodyParsingError(`Field ${key} must not be repeated`);
 			const existing = result[key];
 			if (Array.isArray(existing)) existing.push(val);
 			else result[key] = [existing, val];
@@ -241,7 +260,7 @@ function parseFormValue(
 	fieldSchemas: Readonly<Record<string, WebhookFieldSchema>>,
 ): unknown {
 	const fieldSchema = fieldSchemas[key];
-	if (fieldSchema?.kind === "number") {
+	if (fieldSchema?.kind === "number" || fieldSchema?.kind === "bit") {
 		if (value === "" && fieldSchema.optional) return OMIT_FORM_FIELD;
 		if (value.trim() === "") {
 			throw bodyParsingError(`Field ${key} is not a valid number`);
@@ -249,6 +268,9 @@ function parseFormValue(
 		const number = Number(value);
 		if (!Number.isFinite(number)) {
 			throw bodyParsingError(`Field ${key} is not a valid number`);
+		}
+		if (fieldSchema.kind === "bit" && number !== 0 && number !== 1) {
+			throw bodyParsingError(`Field ${key} must be 0 or 1`);
 		}
 		return number;
 	}
@@ -258,7 +280,9 @@ function parseFormValue(
 		if (value === "false" || value === "0") return false;
 		throw bodyParsingError(`Field ${key} is not a valid boolean`);
 	}
-	if (fieldSchema?.kind === "json" && value !== "") {
+	if (fieldSchema?.kind === "json-object" || fieldSchema?.kind === "json-array") {
+		if (value === "" && fieldSchema.optional) return OMIT_FORM_FIELD;
+		if (value === "") throw bodyParsingError(`Field ${key} is not valid JSON`);
 		try {
 			return JSON.parse(value) as unknown;
 		} catch {
@@ -266,6 +290,44 @@ function parseFormValue(
 		}
 	}
 	return value;
+}
+
+function validatePayload(
+	payload: unknown,
+	fieldSchemas: Readonly<Record<string, WebhookFieldSchema>>,
+): asserts payload is Record<string, unknown> {
+	if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+		throw bodyParsingError("Webhook payload must be an object");
+	}
+	const record = payload as Record<string, unknown>;
+	for (const [name, schema] of Object.entries(fieldSchemas)) {
+		if (!(name in record)) {
+			if (!schema.optional) throw bodyParsingError(`Required field ${name} is missing`);
+			continue;
+		}
+		const value = record[name];
+		if (schema.kind === "string" && typeof value !== "string") {
+			throw bodyParsingError(`Field ${name} is not a valid string`);
+		}
+		if (schema.kind === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
+			throw bodyParsingError(`Field ${name} is not a valid number`);
+		}
+		if (schema.kind === "bit" && (typeof value !== "number" || (value !== 0 && value !== 1))) {
+			throw bodyParsingError(`Field ${name} must be 0 or 1`);
+		}
+		if (schema.kind === "boolean" && typeof value !== "boolean") {
+			throw bodyParsingError(`Field ${name} is not a valid boolean`);
+		}
+		if (
+			schema.kind === "json-object" &&
+			(!value || typeof value !== "object" || Array.isArray(value))
+		) {
+			throw bodyParsingError(`Field ${name} is not a JSON object`);
+		}
+		if (schema.kind === "json-array" && !Array.isArray(value)) {
+			throw bodyParsingError(`Field ${name} is not a JSON array`);
+		}
+	}
 }
 
 function bodyParsingError(message: string): WebhookVerificationError {
