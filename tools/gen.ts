@@ -698,9 +698,11 @@ function assertEndpointCoverage(irs: IRBySource, endpoints: ResolvedEndpoint[]):
 function writeEndpoints(irs: IRBySource): string {
 	const endpoints = resolveEndpoints(irs);
 	const parts: string[] = [HEADER];
-	parts.push(`import type { Currency, CultureName, FiscalDataOperator } from "./handbooks.js";`);
 	parts.push(
-		`import type { Payer, CloudPaymentsJsonData, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem } from "../models.js";\n`,
+		`import type { Currency, CultureName, FiscalDataOperator, NotificationType, TimeZoneCode } from "./handbooks.js";`,
+	);
+	parts.push(
+		`import type { Payer, CloudPaymentsJsonData, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem, NotificationEncoding, NotificationFormat, NotificationHttpMethod, OrderSubscriptionBehavior, SubscriptionInterval, TransactionListStatus } from "../models.js";\n`,
 	);
 
 	for (const ep of endpoints) {
@@ -768,6 +770,29 @@ function tsTypeForNamed(param: Param, alias?: EndpointAlias): string {
 	if (alias?.module === "payments" && alias.methodName === "payoutSbp" && name === "receiver") {
 		return "Payer & { Phone: string }";
 	}
+	if (
+		alias?.module === "payments" &&
+		(alias.methodName === "chargeToken" || alias.methodName === "authToken") &&
+		(name === "trinitiatorcode" || name === "paymentscheduled")
+	) {
+		return "0 | 1";
+	}
+	if (alias?.module === "payments" && name === "timezone") return "TimeZoneCode";
+	if (alias?.module === "payments" && alias.methodName === "listByPeriod" && name === "statuses") {
+		return "TransactionListStatus[]";
+	}
+	if (alias?.module === "subscriptions" && name === "interval") return "SubscriptionInterval";
+	if (alias?.module === "orders" && name === "subscriptionbehavior") {
+		return "OrderSubscriptionBehavior";
+	}
+	if (alias?.module === "settings" && name === "type") {
+		return alias.methodName === "updateNotification"
+			? 'Exclude<NotificationType, "Check">'
+			: "NotificationType";
+	}
+	if (alias?.module === "settings" && name === "httpmethod") return "NotificationHttpMethod";
+	if (alias?.module === "settings" && name === "encoding") return "NotificationEncoding";
+	if (alias?.module === "settings" && name === "format") return "NotificationFormat";
 	if (alias?.module === "kkt" && name === "type") return "KktReceiptType";
 	if (alias?.module === "kkt" && name === "taxationsystem") return "KktTaxationSystem[]";
 	if (alias?.module === "kkt" && name === "ofd") return "FiscalDataOperator";
@@ -820,9 +845,11 @@ function renderEndpointRegistry(endpoints: ResolvedEndpoint[]): string {
 function writeWebhookPayloads(irs: IRBySource): string {
 	const parts: string[] = [HEADER];
 	parts.push(
-		`import type { OperationType, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";\n`,
+		`import type { OperationType, ReasonCode, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";\n`,
 	);
-	parts.push(`import type { KktReceipt, KktReceiptType } from "../models.js";\n`);
+	parts.push(
+		`import type { KktReceipt, KktReceiptType, SubscriptionInterval } from "../models.js";\n`,
+	);
 	parts.push(renderWebhookFieldSchemas(irs));
 
 	for (const spec of WEBHOOK_PAYLOADS) {
@@ -883,7 +910,7 @@ function renderWebhookSchemaObject(fields: Map<string, WebhookFieldSchema>, inde
 }
 
 function webhookFieldKind(tsType: string): WebhookFieldKind {
-	if (tsType === "number") return "number";
+	if (tsType === "number" || tsType === "ReasonCode") return "number";
 	if (tsType === "0 | 1") return "bit";
 	if (tsType === "boolean") return "boolean";
 	if (tsType === "Record<string, unknown>" || tsType === "KktReceipt") return "json-object";
@@ -928,7 +955,9 @@ function tsTypeForWebhook(param: Param, notificationType: string): string {
 	if (name === "culturename") return "CultureName";
 	if (name === "status" && notificationType === "Recurrent") return "SubscriptionStatus";
 	if (name === "status") return "TransactionStatus";
+	if (name === "reasoncode") return "ReasonCode";
 	if (name === "operationtype") return "OperationType";
+	if (notificationType === "Recurrent" && name === "interval") return "SubscriptionInterval";
 	if (notificationType === "Receipt" && name === "type") return "KktReceiptType";
 	if (notificationType === "Receipt" && name === "receipt") return "KktReceipt";
 	return tsTypeFor(param);

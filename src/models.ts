@@ -19,6 +19,7 @@ export interface Payer {
 export type KktReceiptType = "Income" | "IncomeReturn" | "Expense" | "ExpenseReturn";
 export type KktTaxationSystem = 0 | 1 | 2 | 3 | 4 | 5;
 export type KktVatRate = null | 0 | 5 | 7 | 10 | 20 | 22 | 105 | 107 | 110 | 120 | 122;
+export type KktRussiaTimeZone = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 /** `0` — историческое значение по умолчанию, которое по-прежнему принимает API. */
 export type KktPaymentMethod = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type KktPaymentObject =
@@ -55,6 +56,38 @@ export type KktPaymentObject =
 	| 32
 	| 33;
 export type KktAgentSign = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type KktUnitCode =
+	| 0
+	| 10
+	| 11
+	| 12
+	| 20
+	| 21
+	| 22
+	| 30
+	| 31
+	| 32
+	| 40
+	| 41
+	| 42
+	| 50
+	| 51
+	| 70
+	| 71
+	| 72
+	| 73
+	| 80
+	| 81
+	| 82
+	| 83
+	| 255;
+
+export type SubscriptionInterval = "Day" | "Week" | "Month";
+export type OrderSubscriptionBehavior = "CreateWeekly" | "CreateMonthly";
+export type TransactionListStatus = "Authorized" | "Completed" | "Cancelled" | "Declined";
+export type NotificationHttpMethod = "GET" | "POST";
+export type NotificationEncoding = "UTF8" | "Windows1251";
+export type NotificationFormat = "CloudPayments" | "QIWI" | "RT";
 
 export interface KktAgentData {
 	agentOperationName?: string | null;
@@ -128,7 +161,7 @@ export interface ReceiptItem {
 	markPartQuantity?: KktMarkPartQuantity;
 	rawMarkCode?: string;
 	groupSeparator?: string;
-	unitCode?: number;
+	unitCode?: KktUnitCode;
 	expectedMarkItemStatus?: 1 | 2 | 3 | 4 | 5 | 6 | 255;
 }
 
@@ -163,7 +196,7 @@ interface ReceiptFields {
 	operationReceiptRequisite?: KktOperationReceiptRequisite;
 	industryRequisiteCollection?: KktIndustryRequisite[];
 	isInternetPayment?: boolean;
-	russiaTimeZone?: number;
+	russiaTimeZone?: KktRussiaTimeZone;
 	nonCashPayments?: KktNonCashPayment[];
 	amounts?: ReceiptAmounts;
 }
@@ -213,14 +246,14 @@ export interface KktCorrectionReceiptData {
 	CorrectionType?: 0 | 1;
 	AdditionalReceiptRequisite?: string;
 	IsInternetPayment?: boolean;
-	RussiaTimeZone?: number;
+	RussiaTimeZone?: KktRussiaTimeZone;
 }
 
 /** cloudpayments namespace внутри JsonData. */
 export interface CloudPaymentsMeta {
 	CustomerReceipt?: Receipt;
 	recurrent?: {
-		interval: "Day" | "Week" | "Month";
+		interval: SubscriptionInterval;
 		period: number;
 		customerReceipt?: Receipt;
 		amount?: number;

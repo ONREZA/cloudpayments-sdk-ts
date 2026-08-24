@@ -14,7 +14,7 @@ import type {
 	SubscriptionStatus,
 	TransactionStatus,
 } from "./_generated/handbooks.js";
-import type { Payer, Receipt } from "./models.js";
+import type { Payer, Receipt, SubscriptionInterval } from "./models.js";
 
 /** Стандартная обёртка всех ответов CP API. */
 export interface ApiEnvelope<T = unknown> {
@@ -139,7 +139,7 @@ export interface Subscription {
 	RequireConfirmation: boolean;
 	StartDate: string;
 	StartDateIso: string;
-	Interval: "Day" | "Week" | "Month";
+	Interval: SubscriptionInterval;
 	IntervalCode: number;
 	Period: number;
 	MaxPeriods: number | null;

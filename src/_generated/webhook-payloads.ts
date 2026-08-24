@@ -3,9 +3,9 @@
  * Do not edit directly — run `bun run gen` instead.
  */
 
-import type { OperationType, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";
+import type { OperationType, ReasonCode, TransactionStatus, SubscriptionStatus, Currency, CultureName } from "./handbooks.js";
 
-import type { KktReceipt, KktReceiptType } from "../models.js";
+import type { KktReceipt, KktReceiptType, SubscriptionInterval } from "../models.js";
 
 /** Runtime coercion schema для form-urlencoded webhook payload-ов. */
 export const WEBHOOK_FIELD_SCHEMAS = {
@@ -506,7 +506,7 @@ export interface FailNotificationPayload {
 	/** Причина отказа */
 	Reason: string;
 	/** Код ошибки (см. [справочник](#kody-oshibok)) */
-	ReasonCode: number;
+	ReasonCode: ReasonCode;
 	/** Тип операции: Payment/Refund/CardPayout (см. [справочник](#tipy-operatsiy)) */
 	OperationType: OperationType;
 	/** Номер заказа из параметров платежа */
@@ -682,7 +682,7 @@ export interface RecurrentNotificationPayload {
 	/** Дата и время первого платежа по плану во временной зоне UTC */
 	StartDate: string;
 	/** Интервал. Возможные значения: Week, Month */
-	Interval: string;
+	Interval: SubscriptionInterval;
 	/** Период. В комбинации с интервалом 1 Month значит раз в месяц, а 2 Week — раз в две недели */
 	Period: number;
 	/** [Статусы подписок](#statusy-podpisok-rekurrent) */

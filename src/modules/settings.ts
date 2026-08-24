@@ -10,14 +10,19 @@ import {
 	SETTINGS_UPDATE_NOTIFICATION_URL,
 } from "../_generated/endpoints.js";
 import type { NotificationType } from "../_generated/handbooks.js";
+import type {
+	NotificationEncoding,
+	NotificationFormat,
+	NotificationHttpMethod,
+} from "../models.js";
 import { BaseModule, type ExecOptions } from "./base.js";
 
 export interface NotificationSetting {
 	IsEnabled: boolean;
 	Address: string;
-	HttpMethod: "GET" | "POST";
-	Encoding: "UTF8" | "Windows1251";
-	Format: "CloudPayments" | "QIWI" | "RT";
+	HttpMethod: NotificationHttpMethod;
+	Encoding: NotificationEncoding;
+	Format: NotificationFormat;
 }
 
 export class SettingsModule extends BaseModule {

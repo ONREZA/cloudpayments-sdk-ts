@@ -71,14 +71,28 @@ describe("PaymentsModule", () => {
 		await new PaymentsModule(http).test();
 		const settings = new SettingsModule(http);
 		await settings.getNotification("Pay");
-		await settings.updateNotification("Fail", { IsEnabled: false });
+		await settings.updateNotification("Fail", {
+			IsEnabled: false,
+			HttpMethod: "POST",
+			Encoding: "Windows1251",
+			Format: "QIWI",
+		});
 
 		expect(urls).toEqual([
 			"https://api.cp.kz/test",
 			"https://api.cp.kz/site/notifications/Pay/get",
 			"https://api.cp.kz/site/notifications/Fail/update",
 		]);
-		expect(bodies).toEqual([{}, {}, { IsEnabled: false }]);
+		expect(bodies).toEqual([
+			{},
+			{},
+			{
+				IsEnabled: false,
+				HttpMethod: "POST",
+				Encoding: "Windows1251",
+				Format: "QIWI",
+			},
+		]);
 	});
 
 	test("chargeCryptogram throws 3DsRequiredError when Success=false + AcsUrl+PaReq", async () => {

@@ -3,8 +3,8 @@
  * Do not edit directly — run `bun run gen` instead.
  */
 
-import type { Currency, CultureName, FiscalDataOperator } from "./handbooks.js";
-import type { Payer, CloudPaymentsJsonData, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem } from "../models.js";
+import type { Currency, CultureName, FiscalDataOperator, NotificationType, TimeZoneCode } from "./handbooks.js";
+import type { Payer, CloudPaymentsJsonData, KktCorrectionReceiptData, KktReceipt, KktReceiptType, KktTaxationSystem, NotificationEncoding, NotificationFormat, NotificationHttpMethod, OrderSubscriptionBehavior, SubscriptionInterval, TransactionListStatus } from "../models.js";
 
 /**
  * Метод для получения информации по БС для обоих типов сделки (N:1 и 1:N)
@@ -129,9 +129,9 @@ export interface PaymentsChargeTokenRequest {
 	/** Идентификатор пользователя */
 	AccountId: string;
 	/** Признак инициатора списания денежных средств. Возможные значения: 0 - транзакция инициирована ТСП на основе ранее сохраненных учетных данных; 1 - транзакция инициирована держателем карты (клиентом) на основе ранее сохраненных учетных данных. **ВАЖНО!** В случае, если транзакция инициирована ТСП, необходимо дополнительно в запросе указать параметр PaymentScheduled с корректным значением. */
-	TrInitiatorCode: number;
+	TrInitiatorCode: 0 | 1;
 	/** Признак оплаты по расписанию на основе ранее сохраненных учетных данных. Возможные значения: 0 - без расписания; 1 - по расписанию. **ВАЖНО!** В случае, если при запросе данный параметр не указан, по умолчанию будет использоваться значение 0. */
-	PaymentScheduled?: number;
+	PaymentScheduled?: 0 | 1;
 	/** Токен */
 	Token: string;
 	/** Номер счета или заказа */
@@ -163,9 +163,9 @@ export interface PaymentsAuthTokenRequest {
 	/** Идентификатор пользователя */
 	AccountId: string;
 	/** Признак инициатора списания денежных средств. Возможные значения: 0 - транзакция инициирована ТСП на основе ранее сохраненных учетных данных; 1 - транзакция инициирована держателем карты (клиентом) на основе ранее сохраненных учетных данных. **ВАЖНО!** В случае, если транзакция инициирована ТСП, необходимо дополнительно в запросе указать параметр PaymentScheduled с корректным значением. */
-	TrInitiatorCode: number;
+	TrInitiatorCode: 0 | 1;
 	/** Признак оплаты по расписанию на основе ранее сохраненных учетных данных. Возможные значения: 0 - без расписания; 1 - по расписанию. **ВАЖНО!** В случае, если при запросе данный параметр не указан, по умолчанию будет использоваться значение 0. */
-	PaymentScheduled?: number;
+	PaymentScheduled?: 0 | 1;
 	/** Токен */
 	Token: string;
 	/** Номер счета или заказа */
@@ -359,7 +359,7 @@ export interface PaymentsListByDayRequest {
 	/** Дата создания операций */
 	Date: string;
 	/** Код временной зоны, по умолчанию — UTC */
-	TimeZone?: string;
+	TimeZone?: TimeZoneCode;
 }
 
 export const PAYMENTS_LIST_BY_DAY_URL = "/payments/list" as const;
@@ -377,9 +377,9 @@ export interface PaymentsListByPeriodRequest {
 	/** порядковый номер страницы, должно быть больше или равно 1 */
 	PageNumber: number;
 	/** Код временной зоны, по умолчанию — UTC */
-	TimeZone?: string;
+	TimeZone?: TimeZoneCode;
 	/** Статус операция. Может иметь значения [ "Authorized", "Completed", "Cancelled", "Declined" ]. По умолчанию выбраны все */
-	Statuses?: string;
+	Statuses?: TransactionListStatus[];
 }
 
 export const PAYMENTS_LIST_BY_PERIOD_URL = "/v2/payments/list" as const;
@@ -435,7 +435,7 @@ export interface SubscriptionsCreateRequest {
 	/** Дата и время первого платежа по плану во временной зоне UTC. Значение должно быть в будущем */
 	StartDate: string;
 	/** Интервал. Возможные значения: Day, Week, Month */
-	Interval: string;
+	Interval: SubscriptionInterval;
 	/** Период. В комбинации с интервалом, 1 Month значит раз в месяц, а 2 Week — раз в две недели. Должен быть больше 0 */
 	Period: number;
 	/** Максимальное количество платежей в подписке. Если указан, должен быть больше 0 */
@@ -489,7 +489,7 @@ export interface SubscriptionsUpdateRequest {
 	/** Для изменения даты и времени первого или следующего платежа во временной зоне UTC */
 	StartDate?: string;
 	/** Для изменения интервала. Возможные значения: Day, Week, Month */
-	Interval?: string;
+	Interval?: SubscriptionInterval;
 	/** Для изменения периода. В комбинации с интервалом, 1 Month значит раз в месяц, а 2 Week — раз в две недели */
 	Period?: number;
 	/** Для изменения максимального количества платежей в подписке */
@@ -547,7 +547,7 @@ export interface OrdersCreateRequest {
 	/** Язык уведомлений. Возможные значения: "ru-RU", "en-US". ([см. справочник](#lokalizatsiya)) */
 	CultureName?: CultureName;
 	/** Для создания платежа с подпиской. Возможные значения: CreateWeekly, CreateMonthly */
-	SubscriptionBehavior?: string;
+	SubscriptionBehavior?: OrderSubscriptionBehavior;
 	/** Адрес страницы для редиректа при успешной оплате */
 	SuccessRedirectUrl?: string;
 	/** Адрес страницы для редиректа при неуспешной оплате */
@@ -577,7 +577,7 @@ export const ORDERS_CANCEL_URL = "/orders/cancel" as const;
  */
 export interface SettingsGetNotificationRequest {
 	/** Тип уведомления: Check/Pay/Fail и т.д. (см. [справочник](#tipy-operatsiy)) */
-	Type: string;
+	Type: NotificationType;
 }
 
 export const SETTINGS_GET_NOTIFICATION_URL = "/site/notifications/{Type}/get" as const;
@@ -589,17 +589,17 @@ export const SETTINGS_GET_NOTIFICATION_URL = "/site/notifications/{Type}/get" as
  */
 export interface SettingsUpdateNotificationRequest {
 	/** Тип уведомления: Pay/Fail и т.д., кроме Check-уведомления (см. [справочник](#tipy-operatsiy)) */
-	Type: string;
+	Type: Exclude<NotificationType, "Check">;
 	/** Если значение true — то уведомление включено. Значение по умолчанию — false */
 	IsEnabled?: boolean;
 	/** Адрес для отправки уведомлений (для HTTPS-схемы необходим валидный SSL-сертификат) */
 	Address?: string;
 	/** HTTP-метод для отправки уведомлений. Возможные значения: GET, POST. Значение по умолчанию — GET */
-	HttpMethod?: string;
+	HttpMethod?: NotificationHttpMethod;
 	/** Кодировка уведомлений. Возможные значения: UTF8, Windows1251. Значение по умолчанию — UTF8 */
-	Encoding?: string;
+	Encoding?: NotificationEncoding;
 	/** Формат уведомлений. Возможные значения: CloudPayments, QIWI, RT. Значение по умолчанию — CloudPayments */
-	Format?: string;
+	Format?: NotificationFormat;
 }
 
 export const SETTINGS_UPDATE_NOTIFICATION_URL = "/site/notifications/{Type}/update" as const;

@@ -1,4 +1,11 @@
-import type { KktAgentSign, KktReceiptType, KktTaxationSystem, KktVatRate } from "./models.js";
+import type {
+	KktAgentSign,
+	KktPaymentMethod,
+	KktPaymentObject,
+	KktReceiptType,
+	KktTaxationSystem,
+	KktVatRate,
+} from "./models.js";
 
 export type KktReceiptStatus = "Processed" | "Error" | "Queued" | "NotFound";
 
@@ -49,8 +56,8 @@ export interface KktReceiptDetailsItem {
 	Vat: KktVatRate;
 	EAN13: string | null;
 	AgentSign: KktAgentSign | null;
-	Method: number;
-	Object: number;
+	Method: KktPaymentMethod;
+	Object: KktPaymentObject;
 	MeasurementUnit: string | null;
 	AgentData: Record<string, string | null> | null;
 	PurveyorData: Record<string, string | null> | null;
