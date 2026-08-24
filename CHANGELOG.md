@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.2.1...v0.3.0) (2026-08-24)
+
+
+### Features
+
+* **sdk:** cover official api surface ([f480ce0](https://github.com/ONREZA/cloudpayments-sdk-ts/commit/f480ce0d211250eb20916b46b745ba89fb896c09))
+
+
+### Bug Fixes
+
+* **sdk:** harden generated contracts ([fb6efe0](https://github.com/ONREZA/cloudpayments-sdk-ts/commit/fb6efe0b5c1103a578b4a2019d86e4ef770bf918))
+
 ## [0.2.1](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.2.0...v0.2.1) (2026-08-04)
 
 
