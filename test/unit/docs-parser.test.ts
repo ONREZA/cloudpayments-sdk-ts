@@ -45,4 +45,40 @@ describe("documentation parser", () => {
 			},
 		]);
 	});
+
+	test("extracts a relative endpoint from an explicit URL marker", () => {
+		const ir = parseHtml(
+			`<main class="content">
+				<h1 id="dolyami">Долями</h1>
+				<h2 id="button">Встраиваемая кнопка оплаты</h2>
+				<h3 id="altpay">Метод POST /payments/altpay/pay</h3>
+				<p>Описание публичного метода.</p>
+				<p><strong>URL:</strong> /payments/altpay/pay</p>
+			</main>`,
+			"https://developers.cloudpayments.ru",
+		);
+
+		expect(ir.sections[0]?.groups[0]?.subgroups[0]?.urls).toEqual([
+			{
+				url: "/payments/altpay/pay",
+				label: "URL: /payments/altpay/pay",
+			},
+		]);
+		expect(ir.sections[0]?.groups[0]?.subgroups[0]?.description).toBe(
+			"Описание публичного метода.",
+		);
+	});
+
+	test("does not treat a protocol-relative URL as an API path", () => {
+		const ir = parseHtml(
+			`<main class="content">
+				<h1 id="api">API</h1>
+				<h2 id="unsafe">Небезопасный адрес</h2>
+				<p><strong>URL:</strong> //example.com/payments/test</p>
+			</main>`,
+			"https://developers.cloudpayments.ru",
+		);
+
+		expect(ir.sections[0]?.groups[0]?.urls).toEqual([]);
+	});
 });

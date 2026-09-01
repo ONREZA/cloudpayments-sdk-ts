@@ -44,6 +44,7 @@ jobs:
         run: >
           bun test
           test/integration/auth.test.ts
+          test/integration/browser-scripts.test.ts
           test/integration/payments.test.ts
           test/integration/subscriptions.test.ts
           test/integration/webhooks.test.ts

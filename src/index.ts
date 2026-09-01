@@ -11,14 +11,16 @@ export { CloudPaymentsClient, type CloudPaymentsClientOptions } from "./client.j
 export type {
 	ErrorContext,
 	HttpClientOptions,
+	HttpTransportOptions,
 	PostOptions,
+	PublicHttpClientOptions,
 	RequestContext,
 	RequestReplaySafety,
 	ResponseContext,
 	TelemetryHooks,
 } from "./core/http.js";
 // Транспорт и опции
-export { CloudPaymentsHttpClient } from "./core/http.js";
+export { CloudPaymentsHttpClient, CloudPaymentsPublicHttpClient } from "./core/http.js";
 export type { RetryOptions } from "./core/retry.js";
 export { DEFAULT_RETRY_OPTIONS } from "./core/retry.js";
 export { Semaphore } from "./core/semaphore.js";
@@ -40,6 +42,7 @@ export * from "./kkt-types.js";
 export * from "./models.js";
 export { SberPayModule, SbpModule, TPayModule } from "./modules/alternative-payments.js";
 export type { ExecOptions } from "./modules/base.js";
+export { DolyameModule } from "./modules/dolyame.js";
 export { EscrowModule } from "./modules/escrow.js";
 export { KktModule } from "./modules/kkt.js";
 export { OrdersModule } from "./modules/orders.js";
@@ -47,12 +50,19 @@ export { OrdersModule } from "./modules/orders.js";
 export { PaymentsModule } from "./modules/payments.js";
 export { type NotificationSetting, SettingsModule } from "./modules/settings.js";
 export { SubscriptionsModule } from "./modules/subscriptions.js";
+export {
+	CloudPaymentsPublicClient,
+	type CloudPaymentsPublicClientOptions,
+} from "./public-client.js";
 // Response shapes
 export type {
 	AlternativePaymentIntent,
 	ApiEnvelope,
 	Chargeback,
 	CheckCallbackCode,
+	DolyameExtensionData,
+	DolyamePayment,
+	DolyamePaymentModel,
 	EscrowInfo,
 	EscrowPayoutTransaction,
 	EscrowTransaction,

@@ -234,6 +234,23 @@ export interface AlternativePaymentIntent {
 	IsTest?: boolean;
 }
 
+export interface DolyameExtensionData {
+	Link: string;
+}
+
+/** Данные созданной транзакции Долями до перехода покупателя по ссылке. */
+export interface DolyamePaymentModel {
+	TransactionId: number;
+	Amount: number;
+	IsTest?: boolean;
+	Status?: TransactionStatus;
+}
+
+/** Нормализованный результат публичного метода Долями. */
+export interface DolyamePayment extends DolyamePaymentModel {
+	Link: string;
+}
+
 export interface SbpBank {
 	id: string;
 	name: string;

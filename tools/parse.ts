@@ -198,7 +198,7 @@ function extractDescription($: CheerioAPI, els: Element[]): string {
 }
 
 const STRUCTURAL_MARKER_RE =
-	/^(Адрес(?:а| старого| нового)? метода|Параметры запроса|Пример запроса|Пример ответа)(?=[\s:.]|$)/iu;
+	/^(Адрес(?:а| старого| нового)? метода|URL|METHOD|BODY|Параметры запроса|Пример запроса|Пример ответа)(?=[\s:.]|$)/iu;
 
 function isStructuralMarker($: CheerioAPI, el: Element): boolean {
 	if (el.tagName.toLowerCase() !== "p") return false;
@@ -240,12 +240,14 @@ function extractUrls($: CheerioAPI, els: Element[], title: string): Url[] {
 		if (!el) continue;
 		if (el.tagName.toLowerCase() !== "p") continue;
 		const txt = innerText($, el);
-		if (!/^Адрес(?:а| старого| нового)? метода/iu.test(txt)) continue;
+		const isAddressMarker = /^Адрес(?:а| старого| нового)? метода/iu.test(txt);
+		const isRelativeUrlMarker = /^URL\s*:/iu.test(txt);
+		if (!isAddressMarker && !isRelativeUrlMarker) continue;
 
 		// Ищем URL-ы в этом <p> (они идут после <br>), и в следующем <p>, если он не маркер.
 		const candidates: Element[] = [el];
 		const next = els[i + 1];
-		if (next?.tagName.toLowerCase() === "p" && !isStructuralMarker($, next)) {
+		if (isAddressMarker && next?.tagName.toLowerCase() === "p" && !isStructuralMarker($, next)) {
 			candidates.push(next);
 		}
 
@@ -274,9 +276,9 @@ function parseUrlLine(_$: CheerioAPI, line: string): Url | null {
 	const wrapped = `<div>${line}</div>`;
 	const frag = load(wrapped);
 	const text = frag("div").text().replace(/\s+/g, " ").trim();
-	const match = text.match(/https?:\/\/\S+/);
+	const match = text.match(/https?:\/\/\S+|(?:^|\bURL\s*:\s*)(\/(?!\/)[^\s]+)/iu);
 	if (!match) return null;
-	const url = match[0].replace(/[.,;]$/, "");
+	const url = (match[1] ?? match[0]).replace(/[.,;]$/, "");
 	const idx = text.indexOf(url);
 	let label = text.slice(idx + url.length).trim();
 	label = label

@@ -46,7 +46,7 @@ import {
 	PAYMENTS_VOID_URL,
 } from "../_generated/endpoints.js";
 import { CloudPaymentsBusinessError, CloudPaymentsSdkError } from "../errors/index.js";
-import type { Chargeback, TokenRecord, Transaction } from "../types.js";
+import type { ApiEnvelope, Chargeback, TokenRecord, Transaction } from "../types.js";
 import { BaseModule, type ExecOptions } from "./base.js";
 
 export class PaymentsModule extends BaseModule {
@@ -56,12 +56,12 @@ export class PaymentsModule extends BaseModule {
 	 * {@link CloudPaymentsBusinessError} если Success=false.
 	 */
 	async test(body: PaymentsTestRequest = {}, opts?: ExecOptions): Promise<string> {
-		const env = await this.http.post<{ Success: boolean; Message: string | null }>(
-			PAYMENTS_TEST_URL,
-			body,
-			{ ...opts, replaySafety: "safe" },
-		);
-		if (!env.Success) throw new CloudPaymentsBusinessError(env.Message ?? "", null, undefined);
+		const env = await this.http.post<ApiEnvelope<never>>(PAYMENTS_TEST_URL, body, {
+			...opts,
+			replaySafety: "safe",
+		});
+		if (!env.Success)
+			throw new CloudPaymentsBusinessError(env.Message ?? "", null, undefined, env.ErrorCode);
 		if (!env.Message) throw new CloudPaymentsSdkError("CloudPayments test response has no Message");
 		return env.Message;
 	}
@@ -169,11 +169,10 @@ export class PaymentsModule extends BaseModule {
 	 * Model пуст (транзакция не найдена, неверный ID и т.п.).
 	 */
 	async get(body: PaymentsGetRequest, opts?: ExecOptions): Promise<Transaction> {
-		const env = await this.http.post<{
-			Success: boolean;
-			Message: string | null;
-			Model?: Transaction;
-		}>(PAYMENTS_GET_URL, body, { ...opts, replaySafety: "safe" });
+		const env = await this.http.post<ApiEnvelope<Transaction>>(PAYMENTS_GET_URL, body, {
+			...opts,
+			replaySafety: "safe",
+		});
 		if (env.Model && typeof env.Model === "object" && "TransactionId" in env.Model) {
 			return env.Model as Transaction;
 		}
@@ -181,6 +180,7 @@ export class PaymentsModule extends BaseModule {
 			env.Message ?? "Transaction not found",
 			env.Model,
 			undefined,
+			env.ErrorCode,
 		);
 	}
 

@@ -119,6 +119,7 @@ interface EndpointAlias {
 		| "tPay"
 		| "sbp"
 		| "sberPay"
+		| "dolyame"
 		| "kkt";
 	methodName: string;
 	/** URL находится в дочернем блоке endpoint-группы. */
@@ -302,6 +303,14 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 		requestAnchor: "sberpay-parametry-zaprosa",
 		module: "sberPay",
 		methodName: "createQrImage",
+	},
+
+	// Публичный API без Basic Auth: /payments/altpay/pay
+	{
+		sectionAnchor: "dolyami",
+		anchor: "metod-post-payments-altpay-pay",
+		module: "dolyame",
+		methodName: "createPaymentLink",
 	},
 
 	// CloudKassir /kkt/*
@@ -681,7 +690,7 @@ function assertEndpointCoverage(irs: IRBySource, endpoints: ResolvedEndpoint[]):
 			for (const group of section.groups) {
 				for (const candidate of [group, ...group.subgroups]) {
 					for (const url of candidate.urls) {
-						if (new URL(url.url).hostname !== "api.cloudpayments.ru") continue;
+						if (!isOfficialApiEndpoint(url.url)) continue;
 						if (!covered.has(endpointPath(url.url))) {
 							missing.push(`${sourceName}:${section.anchor}:${candidate.anchor} -> ${url.url}`);
 						}
@@ -693,6 +702,11 @@ function assertEndpointCoverage(irs: IRBySource, endpoints: ResolvedEndpoint[]):
 	if (missing.length > 0) {
 		throw new Error(`Official API endpoints are not exposed by the SDK:\n${missing.join("\n")}`);
 	}
+}
+
+function isOfficialApiEndpoint(rawUrl: string): boolean {
+	if (rawUrl.startsWith("/")) return !rawUrl.startsWith("//");
+	return new URL(rawUrl).hostname === "api.cloudpayments.ru";
 }
 
 function writeEndpoints(irs: IRBySource): string {
@@ -726,6 +740,7 @@ function renderEndpointBlock(ep: ResolvedEndpoint): string {
 }
 
 function endpointPath(rawUrl: string): string {
+	if (rawUrl.startsWith("/")) return rawUrl;
 	const url = new URL(rawUrl);
 	return `${decodeURI(url.pathname)}${url.search}`;
 }
@@ -763,6 +778,7 @@ function tsTypeForNamed(param: Param, alias?: EndpointAlias): string {
 	const name = param.name.toLowerCase();
 	// Spec-осведомлённые сужения типов
 	if (name === "currency") return "Currency";
+	if (alias?.module === "dolyame" && name === "culturename") return '"ru-RU" | "en-US"';
 	if (name === "culturename" || name === "culture") return "CultureName";
 	if (name === "customerreceipt") return "KktReceipt";
 	if (name === "correctionreceiptdata") return "KktCorrectionReceiptData";
@@ -799,6 +815,8 @@ function tsTypeForNamed(param: Param, alias?: EndpointAlias): string {
 	if (alias?.module === "tPay" && name === "scheme") return "0 | 1";
 	if (alias?.module === "sbp" && name === "scheme") return '"charge"';
 	if (alias?.module === "sberPay" && name === "scheme") return '"charge" | "auth"';
+	if (alias?.module === "dolyame" && name === "altpaytype") return '"TcsBnplDolyame"';
+	if (alias?.module === "dolyame" && name === "scheme") return '"0" | "1"';
 	if (["tPay", "sbp", "sberPay"].includes(alias?.module ?? "") && name === "device") {
 		return '"MobileApp" | "DesktopWeb" | "Mobile"';
 	}

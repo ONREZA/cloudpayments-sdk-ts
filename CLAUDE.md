@@ -45,8 +45,9 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 │  │  ├─ meta.ts           # BASE_URL, package metadata, docs sha256
 │  │  └─ index.ts          # re-export
 │  ├─ core/                # транспорт
-│  │  ├─ http.ts           # CloudPaymentsHttpClient (Basic Auth, retry, timeout)
+│  │  ├─ http.ts           # authenticated/public HTTP clients, retry, timeout
 │  │  └─ retry.ts          # backoff, parseRetryAfter, sleep, isAbortError
+│  ├─ browser/             # Widget, PaymentBlocks, Checkout types + CDN loaders
 │  ├─ auth/basic.ts        # buildBasicAuthHeader (publicId:apiSecret → base64)
 │  ├─ modules/             # UX-обёртки, по одной на раздел API
 │  │  ├─ base.ts           # BaseModule: exec(), unwrap(), 3DS detection
@@ -55,6 +56,7 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 │  │  ├─ orders.ts         # create/cancel
 │  │  ├─ settings.ts       # getNotification/updateNotification (c {Type} substitution)
 │  │  ├─ alternative-payments.ts # T-Pay, СБП и SberPay
+│  │  ├─ dolyame.ts        # публичный /payments/altpay/pay без Basic Auth
 │  │  ├─ escrow.ts         # безопасные сделки
 │  │  └─ kkt.ts            # CloudKassir /kkt/*
 │  ├─ webhooks/index.ts    # verifyWebhook + typed wrappers + WebhookVerificationError
@@ -63,6 +65,7 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 │  ├─ kkt-types.ts         # РУЧНЫЕ CloudKassir response shapes
 │  ├─ types.ts             # РУЧНЫЕ CloudPayments response shapes
 │  ├─ client.ts            # CloudPaymentsClient — composition root
+│  ├─ public-client.ts     # CloudPaymentsPublicClient — API без API Secret
 │  └─ index.ts             # публичные exports
 ├─ test/unit/              # быстрые contract-тесты без сети
 ├─ tools/                  # pipeline scrape→parse→gen
@@ -94,12 +97,14 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 
 ### Ключевые паттерны
 
-- **API-ответы обёрнуты в `{ Success, Message?, Model? }`**. В модулях распаковываются через `BaseModule`; KKT дополнительно сохраняет `Warning`, `WarningCodes` и `Warnings`.
+- **API-ответы обёрнуты в `{ Success, Message?, Model?, ErrorCode? }`**. В модулях распаковываются через `BaseModule`; верхнеуровневый `ErrorCode` не смешивается с карточным `Model.ReasonCode`, KKT дополнительно сохраняет `Warning`, `WarningCodes` и `Warnings`.
 - **3DS detection** включён внутри charge/auth wrappers. Распознаётся по форме `Model: { AcsUrl, PaReq }`; пользователь не может случайно отключить этот endpoint-инвариант.
 - **Идемпотентность**: через `opts.idempotencyKey` → заголовок `X-Request-ID`. CP хранит результат 1 час.
-- **Retry**: read-only POST можно повторять. Mutation повторяется только с `idempotencyKey`; иначе timeout/network означает `CloudPaymentsUnknownOutcomeError` и требует сверки, а не replay.
+- **Retry**: read-only POST можно повторять. Mutation повторяется только с `idempotencyKey`; иначе timeout/network/неполный успешный ответ означает `CloudPaymentsUnknownOutcomeError` и требует сверки, а не replay.
 - **Telemetry boundary**: hooks не получают `Authorization` и body; их исключения уходят в `onHookError` и не меняют результат запроса.
 - **Origin ownership**: generated endpoints — относительные paths. `CloudPaymentsClient.baseUrl` выбирает RU/EU/KZ; абсолютный URL другого origin и HTTP redirects отклоняются до отправки Basic credentials.
+- **Public API boundary**: `CloudPaymentsPublicClient` использует отдельный транспорт без `Authorization`; сейчас через него доступен только Dolyame.
+- **Browser boundary**: `@onreza/cloudpayments-sdk/browser` не исполняет DOM-код при импорте, загружает Widget, PaymentBlocks и Checkout только с фиксированных официальных CDN URL и типизирует только современные browser API.
 - **AbortError** пользователя пробрасывается как есть; timeout безопасной операции заворачивается в `CloudPaymentsNetworkError`.
 - **Webhook verify**: `Content-HMAC` считается по encoded body, `X-Content-HMAC` — по URL-decoded body. Form parser использует отдельную схему каждого типа уведомления; идентификаторы и части номера карты остаются строками.
 - **TypeScript toolchain**: прямой typecheck запускается нативным TypeScript 7 через alias `@typescript/native`; `tsdown` использует TypeScript 6 с совместимым compiler API для DTS. Не объединять зависимости, пока tooling не поддерживает API TypeScript 7 без experimental warning.
@@ -121,10 +126,11 @@ cloudpayments-sdk-ts/      (плоская репа, не monorepo)
 - `Transaction` — ~55 полей, вытащено из response example charge.
 - `ThreeDsChallenge` — для bounce на AcsUrl.
 - `Subscription`, `Order`, `TokenRecord`, `OrderStatus`, `CheckCallbackCode`.
+- `DolyamePayment` — нормализует wire-поле `ExtensionData.Link` в верхнеуровневый `Link` результата SDK.
 
 ## Авторизация
 
-`new CloudPaymentsClient({ publicId, apiSecret })`. Внутри — `Basic base64(publicId:apiSecret)` в `Authorization` заголовке при каждом запросе. Никакого токен-менеджмента у CP нет — это не OAuth.
+`new CloudPaymentsClient({ publicId, apiSecret })`. Внутри — `Basic base64(publicId:apiSecret)` в `Authorization` заголовке при каждом запросе. Никакого токен-менеджмента у CP нет — это не OAuth. Публичный `/payments/altpay/pay` является исключением и вызывается только через `CloudPaymentsPublicClient`, без Basic Auth.
 
 ## Webhooks
 
@@ -175,7 +181,7 @@ try {
 - **tsconfig строгий**: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`. Не ослаблять.
 - **Никаких `any` в публичных сигнатурах.** `unknown` + narrow через type guard.
 - **WebCrypto везде**, не `node:crypto` (кроссрантаймность).
-- **Публичный API** — только exports из `src/index.ts`, `src/webhooks/index.ts`, `src/errors/index.ts`. Всё остальное — internal.
+- **Публичный API** — только exports из `src/index.ts`, `src/webhooks/index.ts`, `src/errors/index.ts`, `src/browser/index.ts`. Всё остальное — internal.
 
 ## Интеграционные тесты
 
@@ -205,6 +211,7 @@ environment `cloudpayments-test`.
 
 - **Auth** — валидные/невалидные credentials, `CloudPaymentsAuthError` на 401.
 - **Smoke** — `payments.test()`, несуществующие TransactionId/Subscription → `CloudPaymentsBusinessError`.
+- **Browser scripts** — реальный headless Chrome проверяет методы Widget, PaymentBlocks и Checkout из официальных CDN bundle.
 - **Orders** — полный lifecycle `create → cancel` (работает без карт).
 - **Charge flow** (через Bun.WebView + Checkout.js):
   - одностадийка `chargeCryptogram → get → refund`

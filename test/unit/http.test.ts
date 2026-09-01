@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CloudPaymentsHttpClient } from "../../src/core/http.js";
+import { CloudPaymentsHttpClient, CloudPaymentsPublicHttpClient } from "../../src/core/http.js";
 import {
 	CloudPaymentsAuthError,
 	CloudPaymentsHttpError,
@@ -217,5 +217,54 @@ describe("CloudPaymentsHttpClient.post", () => {
 		await client.post("/test", {}, { replaySafety: "safe" });
 
 		expect(requestedUrl).toBe("https://api.cp.kz/test");
+	});
+
+	test("rejects an external origin before credentials reach fetch", async () => {
+		let calls = 0;
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetch(async () => {
+				calls++;
+				return new Response("{}");
+			}),
+		});
+
+		await expect(client.post("https://example.com/pay", {})).rejects.toBeInstanceOf(
+			CloudPaymentsSdkError,
+		);
+		expect(calls).toBe(0);
+	});
+});
+
+describe("CloudPaymentsPublicHttpClient.post", () => {
+	test("never sends an Authorization header", async () => {
+		let capturedHeaders: Record<string, string> = {};
+		const client = new CloudPaymentsPublicHttpClient({
+			fetch: mockFetch(async (_url, init) => {
+				capturedHeaders = init.headers as Record<string, string>;
+				return new Response("{}", { status: 200 });
+			}),
+		});
+
+		await client.post("/payments/altpay/pay", { PublicId: "pk_test" });
+
+		expect(capturedHeaders.Authorization).toBeUndefined();
+		expect(capturedHeaders["Content-Type"]).toBe("application/json");
+	});
+
+	test("does not report a missing API Secret for a public 401 response", async () => {
+		const client = new CloudPaymentsPublicHttpClient({
+			fetch: mockFetch(
+				async () => new Response("denied", { status: 401, statusText: "Unauthorized" }),
+			),
+		});
+
+		try {
+			await client.post("/payments/altpay/pay", { PublicId: "pk_test" });
+			throw new Error("request unexpectedly succeeded");
+		} catch (error) {
+			expect(error).toBeInstanceOf(CloudPaymentsHttpError);
+			expect(error).not.toBeInstanceOf(CloudPaymentsAuthError);
+		}
 	});
 });

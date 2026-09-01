@@ -42,6 +42,9 @@ try {
 	const errors = await import(
 		pathToFileURL(join(packageRoot, packageJson.exports["./errors"].import.default))
 	);
+	const browser = await import(
+		pathToFileURL(join(packageRoot, packageJson.exports["./browser"].import.default))
+	);
 	const require = createRequire(import.meta.url);
 	const required = require(join(packageRoot, packageJson.exports["."].require.default));
 	const requiredWebhooks = require(
@@ -50,9 +53,14 @@ try {
 	const requiredErrors = require(
 		join(packageRoot, packageJson.exports["./errors"].require.default),
 	);
+	const requiredBrowser = require(
+		join(packageRoot, packageJson.exports["./browser"].require.default),
+	);
 
 	assert.equal(typeof esm.CloudPaymentsClient, "function");
 	assert.equal(typeof required.CloudPaymentsClient, "function");
+	assert.equal(typeof esm.CloudPaymentsPublicClient, "function");
+	assert.equal(typeof required.CloudPaymentsPublicClient, "function");
 	assert.equal(typeof esm.KktModule, "function");
 	assert.equal(
 		typeof new esm.CloudPaymentsClient({ publicId: "test", apiSecret: "test" }).kkt.submitReceipt,
@@ -76,6 +84,10 @@ try {
 		requiredErrors.CloudPaymentsUnknownOutcomeError,
 	);
 	assert.equal(esm.CloudPaymentsUnknownOutcomeError, required.CloudPaymentsUnknownOutcomeError);
+	assert.equal(typeof browser.loadCloudPaymentsWidget, "function");
+	assert.equal(typeof browser.loadCloudPaymentsPaymentBlocks, "function");
+	assert.equal(typeof browser.loadCloudPaymentsCheckout, "function");
+	assert.equal(typeof requiredBrowser.loadCloudPaymentsWidget, "function");
 	assert.equal(
 		errors.CloudPaymentsUnknownOutcomeError,
 		requiredErrors.CloudPaymentsUnknownOutcomeError,
@@ -88,15 +100,35 @@ try {
 	assert.ok(existsSync(join(packageRoot, packageJson.exports["./webhooks"].require.types)));
 	assert.ok(existsSync(join(packageRoot, packageJson.exports["./errors"].import.types)));
 	assert.ok(existsSync(join(packageRoot, packageJson.exports["./errors"].require.types)));
+	assert.ok(existsSync(join(packageRoot, packageJson.exports["./browser"].import.types)));
+	assert.ok(existsSync(join(packageRoot, packageJson.exports["./browser"].require.types)));
 
 	writeFileSync(join(consumer, "package.json"), JSON.stringify({ type: "module" }));
 	writeFileSync(
 		join(consumer, "smoke.ts"),
 		[
-			'import { CloudPaymentsClient, type KktCorrectionReceiptVatRate, type KktPaymentMethod, type KktReceiptAmounts, type KktReceiptStatus, type PaymentsPayoutSbpRequest } from "@onreza/cloudpayments-sdk";',
+			'import { CloudPaymentsClient, CloudPaymentsPublicClient, type KktCorrectionReceiptVatRate, type KktPaymentMethod, type KktReceiptAmounts, type KktReceiptStatus, type PaymentsPayoutSbpRequest } from "@onreza/cloudpayments-sdk";',
 			'import { WebhookVerificationError, type WebhookVerificationStage, verifyReceiptWebhook, verifyWebhook } from "@onreza/cloudpayments-sdk/webhooks";',
 			'import { CloudPaymentsUnknownOutcomeError } from "@onreza/cloudpayments-sdk/errors";',
+			'import { loadCloudPaymentsWidget, type CheckoutConstructor, type CloudPaymentsWidget, type WidgetIntentOptions } from "@onreza/cloudpayments-sdk/browser";',
 			"const client = new CloudPaymentsClient({ publicId: 'test', apiSecret: 'test' });",
+			"const publicClient = new CloudPaymentsPublicClient();",
+			"void publicClient.dolyame.createPaymentLink({ PublicId: 'test', AltPayType: 'TcsBnplDolyame', Amount: 1000, Scheme: '1' });",
+			"const widgetIntent: WidgetIntentOptions = { publicTerminalId: 'test', amount: 1, currency: 'RUB', paymentSchema: 'Single' };",
+			"const typedWidget = null as unknown as CloudPaymentsWidget;",
+			"const CheckoutClass = null as unknown as CheckoutConstructor;",
+			"void new CheckoutClass({ publicId: 'test' });",
+			"// @ts-expect-error legacy Widget API is intentionally not exported",
+			"typedWidget.pay;",
+			"// @ts-expect-error legacy Widget API is intentionally not exported",
+			"typedWidget.charge;",
+			"// @ts-expect-error legacy Widget API is intentionally not exported",
+			"typedWidget.auth;",
+			"// @ts-expect-error legacy Checkout API is intentionally not exported",
+			"(null as unknown as import('@onreza/cloudpayments-sdk/browser').Checkout).createCryptogramPacket;",
+			"// @ts-expect-error legacy positional Checkout constructor is intentionally not exported",
+			"new CheckoutClass('test');",
+			"void [loadCloudPaymentsWidget, widgetIntent, typedWidget];",
 			"void client.payments.get({ TransactionId: 1 });",
 			"void client.payments.listByPeriod({ CreatedDateGte: '2026-08-01', CreatedDateLte: '2026-08-24', PageNumber: 1, TimeZone: 'MSK', Statuses: ['Completed'] });",
 			"void client.subscriptions.update({ Id: 'subscription-1', Interval: 'Month' });",
@@ -126,7 +158,25 @@ try {
 			'import sdk = require("@onreza/cloudpayments-sdk");',
 			'import webhooks = require("@onreza/cloudpayments-sdk/webhooks");',
 			'import errors = require("@onreza/cloudpayments-sdk/errors");',
+			'import browser = require("@onreza/cloudpayments-sdk/browser");',
 			"const client = new sdk.CloudPaymentsClient({ publicId: 'test', apiSecret: 'test' });",
+			"const publicClient = new sdk.CloudPaymentsPublicClient();",
+			"void publicClient.dolyame.createPaymentLink({ PublicId: 'test', AltPayType: 'TcsBnplDolyame', Amount: 1000, Scheme: '1' });",
+			"const widgetIntent: browser.WidgetIntentOptions = { publicTerminalId: 'test', amount: 1, currency: 'RUB', paymentSchema: 'Single' };",
+			"const typedWidget = null as unknown as browser.CloudPaymentsWidget;",
+			"const CheckoutClass = null as unknown as browser.CheckoutConstructor;",
+			"void new CheckoutClass({ publicId: 'test' });",
+			"// @ts-expect-error legacy Widget API is intentionally not exported",
+			"typedWidget.pay;",
+			"// @ts-expect-error legacy Widget API is intentionally not exported",
+			"typedWidget.charge;",
+			"// @ts-expect-error legacy Widget API is intentionally not exported",
+			"typedWidget.auth;",
+			"// @ts-expect-error legacy Checkout API is intentionally not exported",
+			"(null as unknown as browser.Checkout).createCryptogramPacket;",
+			"// @ts-expect-error legacy positional Checkout constructor is intentionally not exported",
+			"new CheckoutClass('test');",
+			"void [browser.loadCloudPaymentsWidget, widgetIntent, typedWidget];",
 			"void client.payments.get({ TransactionId: 1 });",
 			"void client.payments.listByPeriod({ CreatedDateGte: '2026-08-01', CreatedDateLte: '2026-08-24', PageNumber: 1, TimeZone: 'MSK', Statuses: ['Completed'] });",
 			"void client.subscriptions.update({ Id: 'subscription-1', Interval: 'Month' });",

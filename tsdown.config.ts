@@ -5,6 +5,7 @@ export default defineConfig({
 		index: "src/index.ts",
 		webhooks: "src/webhooks/index.ts",
 		errors: "src/errors/index.ts",
+		browser: "src/browser/index.ts",
 	},
 	format: "esm",
 	dts: true,

@@ -6,9 +6,11 @@ import {
 	CloudPayments3DsRequiredError,
 	CloudPaymentsBusinessError,
 	CloudPaymentsSdkError,
+	CloudPaymentsUnknownOutcomeError,
 } from "../../src/errors/index.js";
 import { PaymentsModule } from "../../src/modules/payments.js";
 import { SettingsModule } from "../../src/modules/settings.js";
+import { CloudPaymentsPublicClient } from "../../src/public-client.js";
 
 function mockFetchReturning(body: unknown, status = 200): typeof fetch {
 	return (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -173,13 +175,29 @@ describe("PaymentsModule", () => {
 			CloudPaymentsSdkError,
 		);
 	});
+
+	test("model-returning mutations treat a missing Model as an unknown outcome", async () => {
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxAttempts: 1 },
+			fetch: mockFetchReturning({ Success: true, Message: null }),
+		});
+
+		await expect(
+			new PaymentsModule(http).refund({ TransactionId: 1, Amount: 1 }),
+		).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+	});
 });
 
 describe("generated API surface", () => {
 	test("every generated endpoint has a public client method", () => {
 		const client = new CloudPaymentsClient({ ...creds, retry: { maxAttempts: 1 } });
+		const publicClient = new CloudPaymentsPublicClient({ retry: { maxAttempts: 1 } });
 		for (const [moduleName, endpoints] of Object.entries(ENDPOINTS)) {
-			const sdkModule = client[moduleName as keyof CloudPaymentsClient] as object;
+			const sdkModule =
+				moduleName === "dolyame"
+					? publicClient.dolyame
+					: (client[moduleName as keyof CloudPaymentsClient] as object);
 			for (const methodName of Object.keys(endpoints)) {
 				expect(typeof (sdkModule as Record<string, unknown>)[methodName]).toBe("function");
 			}

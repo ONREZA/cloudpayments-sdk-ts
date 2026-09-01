@@ -68,8 +68,7 @@ export interface TelemetryHooks {
 
 export type RequestReplaySafety = "safe" | "requires-idempotency";
 
-export interface HttpClientOptions {
-	credentials: CloudPaymentsCredentials;
+export interface HttpTransportOptions {
 	/** API origin для относительных endpoint paths. По умолчанию `https://api.cloudpayments.ru`. */
 	baseUrl?: string;
 	/** Timeout на запрос в мс. По умолчанию 60_000. */
@@ -90,6 +89,13 @@ export interface HttpClientOptions {
 	hooks?: TelemetryHooks;
 }
 
+export interface HttpClientOptions extends HttpTransportOptions {
+	credentials: CloudPaymentsCredentials;
+}
+
+/** Опции транспорта для публичных методов, не использующих HTTP Basic Auth. */
+export type PublicHttpClientOptions = HttpTransportOptions;
+
 export interface PostOptions {
 	/** X-Request-ID для идемпотентности — CP хранит результат 1 час. */
 	idempotencyKey?: string;
@@ -106,8 +112,8 @@ export interface PostOptions {
 
 const DEFAULT_USER_AGENT = `${CP_SDK_NAME}/${CP_SDK_VERSION}`;
 
-export class CloudPaymentsHttpClient {
-	readonly #credentials: CloudPaymentsCredentials;
+abstract class BaseCloudPaymentsHttpClient {
+	readonly #authorization: string | undefined;
 	readonly #baseUrl: URL;
 	readonly #timeoutMs: number;
 	readonly #retry: Required<RetryOptions>;
@@ -116,8 +122,8 @@ export class CloudPaymentsHttpClient {
 	readonly #semaphore: Semaphore | null;
 	readonly #hooks: TelemetryHooks;
 
-	constructor(opts: HttpClientOptions) {
-		this.#credentials = opts.credentials;
+	protected constructor(opts: HttpTransportOptions, authorization?: string) {
+		this.#authorization = authorization;
 		this.#baseUrl = new URL(opts.baseUrl ?? "https://api.cloudpayments.ru");
 		this.#timeoutMs = opts.timeoutMs ?? 60_000;
 		this.#retry = mergeRetryOptions(opts.retry);
@@ -161,11 +167,11 @@ export class CloudPaymentsHttpClient {
 		opts: PostOptions,
 	): Promise<T> {
 		const baseHeaders: Record<string, string> = {
-			Authorization: buildBasicAuthHeader(this.#credentials),
 			"Content-Type": "application/json",
 			Accept: "application/json",
 			"User-Agent": this.#userAgent,
 		};
+		if (this.#authorization) baseHeaders.Authorization = this.#authorization;
 		if (opts.idempotencyKey) baseHeaders["X-Request-ID"] = opts.idempotencyKey;
 		const telemetryHeaders = { ...baseHeaders };
 		delete telemetryHeaders.Authorization;
@@ -235,7 +241,9 @@ export class CloudPaymentsHttpClient {
 				}
 
 				// non-2xx
-				if (res.status === 401) throw new CloudPaymentsAuthError(res.statusText, text);
+				if (res.status === 401 && this.#authorization) {
+					throw new CloudPaymentsAuthError(res.statusText, text);
+				}
 				if (res.status === 429) {
 					const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"));
 					const retryErr = new CloudPaymentsRateLimitError(res.statusText, text, retryAfterMs);
@@ -323,7 +331,7 @@ export class CloudPaymentsHttpClient {
 		const resolved = new URL(url, this.#baseUrl);
 		if (resolved.origin !== this.#baseUrl.origin) {
 			throw new CloudPaymentsSdkError(
-				`Refusing to send CloudPayments credentials to external origin: ${resolved.origin}`,
+				`Refusing to send a CloudPayments request to external origin: ${resolved.origin}`,
 			);
 		}
 		return resolved.toString();
@@ -367,6 +375,21 @@ export class CloudPaymentsHttpClient {
 				// Telemetry не является частью платёжного результата.
 			}
 		}
+	}
+}
+
+/** HTTP-клиент для серверных методов с Basic Auth. */
+export class CloudPaymentsHttpClient extends BaseCloudPaymentsHttpClient {
+	constructor(opts: HttpClientOptions) {
+		const { credentials, ...transportOptions } = opts;
+		super(transportOptions, buildBasicAuthHeader(credentials));
+	}
+}
+
+/** HTTP-клиент для публичных методов без Authorization-заголовка. */
+export class CloudPaymentsPublicHttpClient extends BaseCloudPaymentsHttpClient {
+	constructor(opts: PublicHttpClientOptions = {}) {
+		super(opts);
 	}
 }
 

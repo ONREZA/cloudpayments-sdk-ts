@@ -79,13 +79,16 @@ export class CloudPaymentsRateLimitError extends CloudPaymentsHttpError {
 /**
  * API вернул { Success: false, Message: "..." }. Бизнес-ошибка: неверный
  * параметр, операция невозможна и т.п. Model может содержать доп. контекст
- * (например, код ошибки в поле ReasonCode).
+ * (например, код ошибки в поле ReasonCode), а верхнеуровневый ErrorCode
+ * сохраняется отдельно и не участвует в категоризации карточных отказов.
  */
 export class CloudPaymentsBusinessError extends CloudPaymentsError {
 	constructor(
 		public readonly apiMessage: string,
 		public readonly model: unknown,
 		public readonly reasonCode: number | undefined,
+		/** Верхнеуровневый ErrorCode ответа API; это не обязательно карточный ReasonCode. */
+		public readonly apiErrorCode?: string | number | null,
 	) {
 		super(apiMessage || "CloudPayments business error");
 		this.name = "CloudPaymentsBusinessError";

@@ -1,8 +1,9 @@
-import type { CloudPaymentsHttpClient, PostOptions, RequestReplaySafety } from "../core/http.js";
+import type { PostOptions, RequestReplaySafety } from "../core/http.js";
 import {
 	CloudPayments3DsRequiredError,
 	CloudPaymentsBusinessError,
 	CloudPaymentsSdkError,
+	CloudPaymentsUnknownOutcomeError,
 } from "../errors/index.js";
 import type { ApiEnvelope } from "../types.js";
 
@@ -14,8 +15,12 @@ interface ExecBehavior {
 	allowMissingModel?: boolean;
 }
 
+interface ModuleHttpClient {
+	post<T>(url: string, body: unknown, opts?: PostOptions): Promise<T>;
+}
+
 export abstract class BaseModule {
-	constructor(protected readonly http: CloudPaymentsHttpClient) {}
+	constructor(protected readonly http: ModuleHttpClient) {}
 
 	/**
 	 * Вызвать endpoint и распаковать envelope. Если Success=true — вернуть Model.
@@ -32,7 +37,14 @@ export abstract class BaseModule {
 			...opts,
 			replaySafety: behavior.replaySafety ?? "requires-idempotency",
 		});
-		return this.unwrap(env, behavior.detect3ds ?? false, behavior.allowMissingModel ?? false);
+		try {
+			return this.unwrap(env, behavior.detect3ds ?? false, behavior.allowMissingModel ?? false);
+		} catch (error) {
+			if (error instanceof CloudPaymentsSdkError) {
+				this.throwContractError(error, url, opts, behavior.replaySafety ?? "requires-idempotency");
+			}
+			throw error;
+		}
 	}
 
 	/** Универсальная распаковка envelope. */
@@ -56,7 +68,19 @@ export abstract class BaseModule {
 		}
 		const model = env.Model;
 		const reasonCode = extractReasonCode(model);
-		throw new CloudPaymentsBusinessError(env.Message ?? "", model, reasonCode);
+		throw new CloudPaymentsBusinessError(env.Message ?? "", model, reasonCode, env.ErrorCode);
+	}
+
+	protected throwContractError(
+		error: CloudPaymentsSdkError,
+		endpoint: string,
+		opts: ExecOptions,
+		replaySafety: RequestReplaySafety = "requires-idempotency",
+	): never {
+		if (replaySafety !== "safe" && !opts.idempotencyKey) {
+			throw new CloudPaymentsUnknownOutcomeError(endpoint, error);
+		}
+		throw error;
 	}
 }
 

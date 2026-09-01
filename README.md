@@ -3,8 +3,9 @@
 Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru) и [CloudKassir](https://developers.cloudkassir.ru). Требует Node.js 24+; package artifact проверяется на минимальном и актуальном Node 24, unit-контракты — в Bun. Транспорт использует стандартные `fetch` и WebCrypto API.
 Публикуется один ESM artifact; `require()` поддержан встроенным в Node 24 механизмом `require(esm)`.
 
-- ✅ 1:1 с распознанными API-адресами официальной документации — 48 методов и 8 типов webhook-уведомлений
+- ✅ 1:1 с распознанными API-адресами официальной документации — 49 методов и 8 типов webhook-уведомлений
 - ✅ Строгая типизация запросов и ответов: `Transaction`, `Subscription`, `Order`, `TokenRecord`, `ThreeDsChallenge`
+- ✅ Типизированные Widget, PaymentBlocks и Checkout через отдельный browser subpath
 - ✅ Union-типы из справочников: `Currency`, `ReasonCode`, `TransactionStatus`, `CultureName`, …
 - ✅ Кроссрантайм WebCrypto для HMAC верификации webhook'ов
 - ✅ Безопасный retry: read-only операции и mutation с `X-Request-ID`
@@ -19,6 +20,69 @@ npm install @onreza/cloudpayments-sdk
 bun add @onreza/cloudpayments-sdk
 ```
 
+## Браузерные интеграции
+
+Browser API вынесены в `@onreza/cloudpayments-sdk/browser`. Импорт безопасен для
+SSR: `document` используется только при явном вызове загрузчика. Скрипты всегда
+загружаются с официальных CloudPayments CDN; произвольный URL загрузчик не
+принимает.
+
+### Платёжный Widget
+
+```ts
+import { loadCloudPaymentsWidget } from "@onreza/cloudpayments-sdk/browser";
+
+const { CloudPayments } = await loadCloudPaymentsWidget({ nonce: cspNonce });
+const widget = new CloudPayments();
+const result = await widget.start({
+  publicTerminalId: "test_api_00000000000000000000002",
+  amount: 1_001,
+  currency: "RUB",
+  paymentSchema: "Single",
+  description: "Заказ #42",
+  externalId: "order-42",
+});
+```
+
+SDK намеренно типизирует только современный `start()`: устаревшие
+`pay`/`charge`/`auth` не входят в публичный контракт. Для управления актуальным
+виджетом доступны `close` и коллбэки экземпляра.
+
+### Платёжный конструктор PaymentBlocks
+
+```ts
+import { loadCloudPaymentsPaymentBlocks } from "@onreza/cloudpayments-sdk/browser";
+
+const { PaymentBlocks } = await loadCloudPaymentsPaymentBlocks();
+const blocks = new PaymentBlocks({
+  publicTerminalId: "test_api_00000000000000000000002",
+  amount: 1_001,
+  currency: "RUB",
+  paymentSchema: "Single",
+});
+blocks.on("success", (result) => console.log(result.data?.transactionId));
+blocks.mount(document.getElementById("payment-form")!);
+```
+
+### Checkout и криптограмма
+
+```ts
+import { loadCloudPaymentsCheckout } from "@onreza/cloudpayments-sdk/browser";
+
+const { Checkout } = await loadCloudPaymentsCheckout();
+const checkout = new Checkout({ publicId: "test_api_00000000000000000000002" });
+const cryptogram = await checkout.createPaymentCryptogram({
+  cardNumber: "4242 4242 4242 4242",
+  expDateMonthYear: "12/30",
+  cvv: "911",
+});
+```
+
+Checkout необходимо загружать именно с CDN CloudPayments. Не копируйте и не
+собирайте `checkout.js` внутрь своего bundle; требования HTTPS, PCI DSS и запрет
+на хранение криптограммы остаются ответственностью интеграции. Устаревшие
+positional-конструктор и `createCryptogramPacket()` намеренно не типизированы.
+
 ## Быстрый старт
 
 ### 1. Инициализация клиента
@@ -30,6 +94,29 @@ const cp = new CloudPaymentsClient({
   publicId: process.env.CP_PUBLIC_ID!,
   apiSecret: process.env.CP_API_SECRET!,
 });
+```
+
+### Публичный API Долями
+
+Этот endpoint не использует API Secret и поэтому намеренно доступен через
+отдельный клиент, который не отправляет `Authorization`:
+
+```ts
+import { CloudPaymentsPublicClient } from "@onreza/cloudpayments-sdk";
+
+const publicCp = new CloudPaymentsPublicClient();
+const payment = await publicCp.dolyame.createPaymentLink(
+  {
+    PublicId: "pk_0fe1d5c9cb47e8cf8d96102201419",
+    AltPayType: "TcsBnplDolyame",
+    Amount: 1_000,
+    Scheme: "1",
+    InvoiceId: "order-42",
+  },
+  { idempotencyKey: "dolyame-order-42" },
+);
+
+res.redirect(payment.Link);
 ```
 
 ### 2. Оплата по криптограмме
@@ -60,6 +147,7 @@ try {
     res.render("3ds-redirect", { acsUrl: err.acsUrl, md: err.transactionId, paReq: err.paReq });
   } else if (err instanceof CloudPaymentsBusinessError) {
     // err.reasonCode — числовой код из справочника ReasonCode (5051, 5206, …)
+    // err.apiErrorCode — отдельный верхнеуровневый ErrorCode ответа API, если он был
     // err.model — Transaction с деталями отказа
     console.error("Отказ:", err.apiMessage, "code:", err.reasonCode);
   }
@@ -196,6 +284,7 @@ const status = await cp.kkt.getReceiptStatus({ Id: submitted.Id });
 - `cp.escrow` — сведения о безопасных сделках
 - `cp.tPay`, `cp.sbp`, `cp.sberPay` — ссылки и QR для альтернативных способов оплаты
 - `cp.kkt` — чеки, чеки коррекции, маркировка и состояние касс CloudKassir
+- `new CloudPaymentsPublicClient().dolyame` — публичная ссылка на оплату Долями без Basic Auth
 
 ## Обработка ошибок
 
@@ -204,11 +293,11 @@ const status = await cp.kkt.getReceiptStatus({ Id: submitted.Id });
 | Класс | Когда |
 |---|---|
 | `CloudPaymentsNetworkError` | DNS, connection или timeout для read/idempotent запроса |
-| `CloudPaymentsUnknownOutcomeError` | Mutation без idempotency key получила неоднозначный network/5xx/response outcome; перед повтором нужна сверка |
+| `CloudPaymentsUnknownOutcomeError` | Mutation без idempotency key получила неоднозначный network/5xx или неполный успешный ответ; перед повтором нужна сверка |
 | `CloudPaymentsHttpError` | HTTP non-2xx (до разбора тела) |
 | `CloudPaymentsAuthError` | 401 — неверный publicId/apiSecret |
 | `CloudPaymentsRateLimitError` | 429 — превышен лимит CP (5/30 concurrent) |
-| `CloudPaymentsBusinessError` | `{Success:false}` от CP с `Message` и/или `Model.ReasonCode` |
+| `CloudPaymentsBusinessError` | `{Success:false}` от CP; сохраняет `Message`, `Model`, `ReasonCode` и отдельный `ErrorCode` |
 | `CloudPayments3DsRequiredError` | Требуется 3-D Secure; содержит `acsUrl` + `paReq` + `transactionId` |
 | `CloudPaymentsSdkError` | Внутренние инварианты SDK |
 
@@ -299,6 +388,7 @@ setTimeout(() => ctrl.abort(), 5000);
 ## Документация
 
 - Полная документация CloudPayments: https://developers.cloudpayments.ru
+- Документация Widget: https://widget.cloudpayments.ru/docs/widget.html
 - Полная документация CloudKassir: https://developers.cloudkassir.ru
 - Архитектура SDK и внутреннее устройство: см. [CLAUDE.md](./CLAUDE.md)
 - Примеры: [examples/](./examples/)

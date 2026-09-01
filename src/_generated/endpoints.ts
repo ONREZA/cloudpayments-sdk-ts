@@ -879,6 +879,40 @@ export interface SberPayCreateQrImageRequest {
 export const SBER_PAY_CREATE_QR_IMAGE_URL = "/payments/qr/sberpay/image" as const;
 
 /**
+ * Метод POST /payments/altpay/pay
+ * Метод предназначен для получения ссылки на оплату через заполнение заявки Долями
+ * @see https://developers.cloudpayments.ru/#metod-post-payments-altpay-pay
+ */
+export interface DolyameCreatePaymentLinkRequest {
+	/** Идентификатор терминала. */
+	PublicId: string;
+	/** Тип оплаты. Необходимо передавать значение "TcsBnplDolyame". */
+	AltPayType: "TcsBnplDolyame";
+	/** Cумма платежа, разделитель точка. Количество не нулевых знаков после точки – 2. */
+	Amount: number;
+	/** Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `0` - одностадийная оплата; `1` - двухстадийная оплата */
+	Scheme: "0" | "1";
+	/** Идентификатор заказа/номер счета. Приходит в [Check](#check)-уведомлении и может использоваться для сверки номера заказа. */
+	InvoiceId?: string;
+	/** Описание заказа/оплаты в свободной форме */
+	Description?: string;
+	/** Идентификатор плательщика */
+	AccountId?: string;
+	/** E-mail плательщика, на который будет отправлена квитанция об оплате */
+	Email?: string;
+	/** Ссылка для возврата в случае успешной оплаты */
+	SuccessRedirectUrl?: string;
+	/** Ссылка для возврата в случае неуспешной оплаты */
+	FailRedirectUrl?: string;
+	/** Любые другие данные, которые будут связаны с транзакцией в формате объекта `json`. */
+	JsonData?: CloudPaymentsJsonData;
+	/** Язык уведомлений и квитанций. Возможные значения: "ru-RU", "en-US". (см. [справочник](#lokalizatsiya)). Если не передан, по умолчанию будет использоваться "ru-RU”. */
+	CultureName?: "ru-RU" | "en-US";
+}
+
+export const DOLYAME_CREATE_PAYMENT_LINK_URL = "/payments/altpay/pay" as const;
+
+/**
  * Фискализация кассы
  * Метод перевода интернет-кассы в фискальный режим работы (первичная регистрация).
  * @see https://developers.cloudkassir.ru/#fiskalizatsiya-kassy
@@ -1110,6 +1144,9 @@ export const ENDPOINTS = {
 	sberPay: {
 		createLink: { url: "/payments/qr/sberpay/link", method: "POST" as const },
 		createQrImage: { url: "/payments/qr/sberpay/image", method: "POST" as const },
+	},
+	dolyame: {
+		createPaymentLink: { url: "/payments/altpay/pay", method: "POST" as const },
 	},
 	kkt: {
 		fiscalize: { url: "/kkt/fiscalize", method: "POST" as const },
