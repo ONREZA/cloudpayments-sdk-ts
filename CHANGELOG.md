@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.3.1...v0.4.0) (2026-09-01)
+
+
+### Features
+
+* **sdk:** add modern payment integrations ([9f947be](https://github.com/ONREZA/cloudpayments-sdk-ts/commit/9f947bedc59dca7a3129c5f6efee7cdcbadbdd26))
+
 ## [0.3.1](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.3.0...v0.3.1) (2026-08-24)
 
 
