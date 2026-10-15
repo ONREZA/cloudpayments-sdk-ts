@@ -88,6 +88,12 @@ try {
 	assert.equal(typeof browser.loadCloudPaymentsPaymentBlocks, "function");
 	assert.equal(typeof browser.loadCloudPaymentsCheckout, "function");
 	assert.equal(typeof requiredBrowser.loadCloudPaymentsWidget, "function");
+	assert.equal(typeof requiredBrowser.waitForWidgetResult, "function");
+	const widgetResult = { type: "payment", status: "wait", isAwaitingResult: true };
+	assert.deepEqual(await browser.waitForWidgetResult(Promise.resolve(widgetResult)), {
+		status: "reported",
+		result: widgetResult,
+	});
 	assert.equal(
 		errors.CloudPaymentsUnknownOutcomeError,
 		requiredErrors.CloudPaymentsUnknownOutcomeError,
@@ -110,7 +116,7 @@ try {
 			'import { CloudPaymentsClient, CloudPaymentsPublicClient, type KktCorrectionReceiptVatRate, type KktPaymentMethod, type KktReceiptAmounts, type KktReceiptStatus, type PaymentsPayoutSbpRequest } from "@onreza/cloudpayments-sdk";',
 			'import { WebhookVerificationError, type WebhookVerificationStage, verifyReceiptWebhook, verifyWebhook } from "@onreza/cloudpayments-sdk/webhooks";',
 			'import { CloudPaymentsUnknownOutcomeError } from "@onreza/cloudpayments-sdk/errors";',
-			'import { loadCloudPaymentsWidget, type CheckoutConstructor, type CloudPaymentsWidget, type WidgetIntentOptions } from "@onreza/cloudpayments-sdk/browser";',
+			'import { loadCloudPaymentsWidget, waitForWidgetResult, type CheckoutConstructor, type CloudPaymentsWidget, type WidgetIntentOptions, type WidgetWaitResult } from "@onreza/cloudpayments-sdk/browser";',
 			"const client = new CloudPaymentsClient({ publicId: 'test', apiSecret: 'test' });",
 			"const publicClient = new CloudPaymentsPublicClient();",
 			"void publicClient.dolyame.createPaymentLink({ PublicId: 'test', AltPayType: 'TcsBnplDolyame', Amount: 1000, Scheme: '1' });",
@@ -129,6 +135,8 @@ try {
 			"// @ts-expect-error legacy positional Checkout constructor is intentionally not exported",
 			"new CheckoutClass('test');",
 			"void [loadCloudPaymentsWidget, widgetIntent, typedWidget];",
+			"const observation: Promise<WidgetWaitResult> = waitForWidgetResult(Promise.resolve({ type: 'payment', status: 'wait' }));",
+			"void observation;",
 			"void client.payments.get({ TransactionId: 1 });",
 			"void client.payments.listByPeriod({ CreatedDateGte: '2026-08-01', CreatedDateLte: '2026-08-24', PageNumber: 1, TimeZone: 'MSK', Statuses: ['Completed'] });",
 			"void client.subscriptions.update({ Id: 'subscription-1', Interval: 'Month' });",
@@ -177,6 +185,8 @@ try {
 			"// @ts-expect-error legacy positional Checkout constructor is intentionally not exported",
 			"new CheckoutClass('test');",
 			"void [browser.loadCloudPaymentsWidget, widgetIntent, typedWidget];",
+			"const observation: Promise<browser.WidgetWaitResult> = browser.waitForWidgetResult(Promise.resolve({ type: 'payment', status: 'wait' }));",
+			"void observation;",
 			"void client.payments.get({ TransactionId: 1 });",
 			"void client.payments.listByPeriod({ CreatedDateGte: '2026-08-01', CreatedDateLte: '2026-08-24', PageNumber: 1, TimeZone: 'MSK', Statuses: ['Completed'] });",
 			"void client.subscriptions.update({ Id: 'subscription-1', Interval: 'Month' });",

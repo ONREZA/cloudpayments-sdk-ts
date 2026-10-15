@@ -30,23 +30,44 @@ SSR: `document` используется только при явном вызо
 ### Платёжный Widget
 
 ```ts
-import { loadCloudPaymentsWidget } from "@onreza/cloudpayments-sdk/browser";
+import { loadCloudPaymentsWidget, waitForWidgetResult } from "@onreza/cloudpayments-sdk/browser";
 
 const { CloudPayments } = await loadCloudPaymentsWidget({ nonce: cspNonce });
 const widget = new CloudPayments();
-const result = await widget.start({
+const paymentResult = widget.start({
   publicTerminalId: "test_api_00000000000000000000002",
   amount: 1_001,
   currency: "RUB",
   paymentSchema: "Single",
   description: "Заказ #42",
   externalId: "order-42",
+  retryPayment: false,
 });
+const observation = await waitForWidgetResult(paymentResult, { timeoutMs: 30_000 });
+// Reconcile this checkout on your backend for BOTH reported and pending outcomes.
+// To wait again, reuse paymentResult; do not call widget.start() again.
 ```
 
 SDK намеренно типизирует только современный `start()`: устаревшие
 `pay`/`charge`/`auth` не входят в публичный контракт. Для управления актуальным
 виджетом доступны `close` и коллбэки экземпляра.
+
+`waitForWidgetResult` ограничивает только ожидание интерфейса. Если Promise
+виджета не завершился, отменён сигнал ожидания или Promise отклонён, результат —
+`{ status: "pending", reason }` (`timeout`, `aborted` или `error`; последний
+сохраняет исходный `error`). Завершившийся Promise возвращается как
+`{ status: "reported", result }` без потери полей провайдера. `reported` означает
+сообщение виджета: даже `success`, `fail` и `cancel` требуют серверной сверки;
+`wait`, `appointment`, `isAwaitingResult` и криптограмма не подтверждают списание.
+По умолчанию ожидание ограничено 30 секундами; можно передать `signal`.
+`CloudPaymentsClient.timeoutMs` ограничивает HTTP-запросы и не ограничивает
+ожидание виджета или банковскую аутентификацию.
+
+Наблюдатель не закрывает виджет, не меняет callbacks и не запускает оплату.
+Поздний ответ остаётся доступен через сохранённый `paymentResult`; повторный
+вызов наблюдателя ждёт этот же Promise. Сохраняйте именно Promise одного
+`widget.start()`, а не функцию, повторно запускающую оплату. После перезагрузки
+страницы восстанавливайте checkout по его серверному идентификатору.
 
 ### Платёжный конструктор PaymentBlocks
 
@@ -201,6 +222,56 @@ app.post("/cp-webhook/check", async (req, res) => {
 });
 ```
 
+### Восстановление платежа и ожидание 3-D Secure
+
+`Success` в envelope сообщает об API-вызове, а не о факте списания. Методы
+`payments.get`, `find` и `findLegacy` возвращают найденную транзакцию и при
+`Success: false`. SDK сохраняет исходные `Status`, `Reason`, `ReasonCode`,
+`TransactionId` и даты; адаптер приложения должен сохранять их вместе со своим
+состоянием, а не заменять одним `pending`.
+
+| `Transaction.Status` | Значение для восстановления |
+|---|---|
+| `AwaitingAuthentication` | Ожидается банковская аутентификация 3-D Secure; отдельное объяснение пользователю, наблюдение той же попытки |
+| `Authorized` | Средства авторизованы; двухстадийный платёж ещё не подтверждён |
+| `Completed` | Операция завершена; сверьте её принадлежность, сумму, валюту и тип |
+| `Cancelled`, `Declined` | Операция отменена или отклонена; решение о следующей попытке принимает backend |
+| Незнакомый статус, ошибка чтения, отсутствие ответа | Исход не установлен; сохраняйте запрет на повторное списание и продолжайте сверку |
+
+По [контракту CloudPayments](https://developers.cloudpayments.ru/#statusy-operatsiy)
+для `AwaitingAuthentication` нет серверной команды восстановления. Сам статус
+не содержит URL банковской формы. `ThreeDomainSecure` в `Reason` сохраняется как
+исходная строка и не является кодом отказа. Если при первоначальной оплате
+получен `CloudPayments3DsRequiredError`, сохраните `transactionId` и данные
+challenge для текущего flow; после возврата банка завершайте **ту же транзакцию**
+через `post3ds`. Нельзя обещать возобновление банковской формы по одному ID
+транзакции или автоматически вызывать новую оплату.
+
+```ts
+const tx = await cp.payments.get({ TransactionId: savedTransactionId });
+if (tx.Status === "AwaitingAuthentication") {
+  // Persist tx.Status, tx.Reason and tx.TransactionId with the existing attempt.
+  // Show: "Complete 3-D Secure in your bank. We are checking this payment."
+}
+```
+
+Сверка должна начинаться при запуске checkout, независимо от callbacks виджета,
+и продолжаться на backend после таймаута, закрытия формы или ухода со страницы.
+При известном `TransactionId` используйте `get`: `find` возвращает последнюю
+операцию по `InvoiceId`, а v2 включает также возвраты и выплаты. Ответ `Not found`
+на поиск не доказывает, что ранее отправленный запрос не исполнялся.
+
+`Check` — предварительная проверка, не подтверждение авторизации или списания.
+Одобрение Check, истечение счёта, отмена HTTP-запроса и таймаут интерфейса не
+делают поданную попытку безопасной для повторной оплаты. Не отмечайте такие
+попытки как отказ только по возрасту.
+
+Backend приложения отвечает за атомарное восстановление существующего checkout
+без создания нового платёжного намерения и без расходования лимита создания.
+Он также задаёт срок эскалации оператору, учитывает возраст поданных попыток в
+health check и сохраняет их блокировку до установления исхода. Эти правила
+требуют состояния приложения и не выполняются браузерным или HTTP-клиентом SDK.
+
 ### 5. Рекуррентные подписки
 
 ```ts
@@ -293,7 +364,7 @@ const status = await cp.kkt.getReceiptStatus({ Id: submitted.Id });
 | Класс | Когда |
 |---|---|
 | `CloudPaymentsNetworkError` | DNS, connection или timeout для read/idempotent запроса |
-| `CloudPaymentsUnknownOutcomeError` | Mutation без idempotency key получила неоднозначный network/5xx или неполный успешный ответ; перед повтором нужна сверка |
+| `CloudPaymentsUnknownOutcomeError` | Mutation без действующей гарантии идемпотентности получила неоднозначный network/5xx или некорректный ответ; перед повтором нужна сверка |
 | `CloudPaymentsHttpError` | HTTP non-2xx (до разбора тела) |
 | `CloudPaymentsAuthError` | 401 — неверный publicId/apiSecret |
 | `CloudPaymentsRateLimitError` | 429 — превышен лимит CP (5/30 concurrent) |
@@ -344,6 +415,27 @@ Mutation без `idempotencyKey` никогда не повторяется ав
 обрыве, transient `5xx` или повреждённом успешном ответе SDK возвращает
 `CloudPaymentsUnknownOutcomeError`: сначала сверяйте транзакцию через
 `payments.get`/реестр, затем принимайте решение о новой операции.
+
+Некорректный ответ mutation с действующим ключом может дать
+`CloudPaymentsSdkError`: это также не доказывает отказ платежа. Сверьте исход;
+повтор допустим только с прежними параметрами и ключом в пределах его срока.
+
+Ключ должен быть непустым значением HTTP-заголовка без пробелов по краям и
+управляющих символов; некорректный ключ отклоняется до отправки. Сохраните ключ
+вместе с попыткой **до** запроса и используйте его только для повторения той же
+операции с теми же параметрами. Новый ключ — новое намерение, а `InvoiceId` сам
+по себе не обеспечивает идемпотентность. Ключ для `post3ds` отличается от ключа
+первоначального `charge`/`auth`.
+
+CloudPayments хранит результат [только один час](https://developers.cloudpayments.ru/#idempotentnost-api).
+Наличие прежнего ключа после этого срока не гарантирует защиту от повторного
+списания: восстанавливайте исход по сохранённой транзакции и серверному checkout.
+SDK прекращает автоматические повторы mutation, если следующий запрос выйдет
+за час от первой отправки текущего вызова, и возвращает
+`CloudPaymentsUnknownOutcomeError`. Возраст ключа до этого вызова SDK неизвестен:
+его контролирует приложение. Read-only сверки этим окном не ограничены.
+Отмена HTTP-запроса сохраняет переданную причину abort; после отправки mutation
+это также требует сверки и не подтверждает отмену платежа.
 
 ### Региональный API
 

@@ -40,6 +40,121 @@ describe("PaymentsModule", () => {
 		await expect(new PaymentsModule(http).test()).rejects.toBeInstanceOf(CloudPaymentsSdkError);
 	});
 
+	test.each([null, {}, { Success: "true", Message: "guid-123" }, { Success: true, Message: 42 }])(
+		"test() rejects a malformed response: %j",
+		async (envelope) => {
+			const http = new CloudPaymentsHttpClient({
+				credentials: creds,
+				fetch: mockFetchReturning(envelope),
+			});
+
+			await expect(new PaymentsModule(http).test()).rejects.toBeInstanceOf(CloudPaymentsSdkError);
+		},
+	);
+
+	test.each(["get", "find", "findLegacy"] as const)(
+		"%s preserves transaction status and raw provider fields even when Success is false",
+		async (method) => {
+			for (const Status of ["AwaitingAuthentication", "Declined", "FutureStatus"]) {
+				const model = {
+					TransactionId: 42,
+					Status,
+					Reason: "ThreeDomainSecure",
+					CreatedDate: "raw",
+				};
+				const http = new CloudPaymentsHttpClient({
+					credentials: creds,
+					fetch: mockFetchReturning({ Success: false, Model: model }),
+				});
+				const payments = new PaymentsModule(http);
+				const result: unknown =
+					method === "get"
+						? await payments.get({ TransactionId: 42 })
+						: await payments[method]({ InvoiceId: "order-42" });
+				expect(result).toEqual(model);
+			}
+		},
+	);
+
+	test("get rejects a response for a different transaction", async () => {
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetchReturning({
+				Success: true,
+				Model: { TransactionId: 43, Status: "Completed" },
+			}),
+		});
+
+		await expect(new PaymentsModule(http).get({ TransactionId: 42 })).rejects.toBeInstanceOf(
+			CloudPaymentsSdkError,
+		);
+	});
+
+	test.each([42, 43])(
+		"get retains the sent transaction ID when the caller mutates the body: %d",
+		async (TransactionId) => {
+			const body = { TransactionId: 42 };
+			const http = new CloudPaymentsHttpClient({
+				credentials: creds,
+				fetch: (async (_url: string | URL | Request, init?: RequestInit) => {
+					expect(JSON.parse(String(init?.body))).toEqual({ TransactionId: 42 });
+					body.TransactionId = 43;
+					return Response.json({ Success: true, Model: { TransactionId, Status: "Completed" } });
+				}) as unknown as typeof fetch,
+			});
+			const result = new PaymentsModule(http).get(body);
+			if (TransactionId === 42) {
+				await expect(result).resolves.toMatchObject({ TransactionId: 42 });
+			} else {
+				await expect(result).rejects.toBeInstanceOf(CloudPaymentsSdkError);
+			}
+		},
+	);
+
+	test.each(["get", "find", "findLegacy"] as const)(
+		"%s rejects malformed envelopes and incomplete transaction models",
+		async (method) => {
+			for (const envelope of [
+				null,
+				{},
+				{ Success: "true", Model: { TransactionId: 42, Status: "Completed" } },
+				{ Success: true },
+				{ Success: true, Model: {} },
+				{ Success: false, Model: { TransactionId: "42", Status: "Completed" } },
+				{ Success: true, Model: { TransactionId: 0, Status: "Completed" } },
+				{ Success: true, Model: { TransactionId: 1.5, Status: "Completed" } },
+				{ Success: true, Model: { TransactionId: 42, Status: "" } },
+			]) {
+				const http = new CloudPaymentsHttpClient({
+					credentials: creds,
+					fetch: mockFetchReturning(envelope),
+				});
+				const payments = new PaymentsModule(http);
+				const result =
+					method === "get"
+						? payments.get({ TransactionId: 42 })
+						: payments[method]({ InvoiceId: "order-42" });
+				await expect(result).rejects.toBeInstanceOf(CloudPaymentsSdkError);
+			}
+		},
+	);
+
+	test.each(["get", "find", "findLegacy"] as const)(
+		"%s keeps a missing transaction as a business error",
+		async (method) => {
+			const http = new CloudPaymentsHttpClient({
+				credentials: creds,
+				fetch: mockFetchReturning({ Success: false, Message: "Not found" }),
+			});
+			const payments = new PaymentsModule(http);
+			const result =
+				method === "get"
+					? payments.get({ TransactionId: 42 })
+					: payments[method]({ InvoiceId: "order-42" });
+			await expect(result).rejects.toBeInstanceOf(CloudPaymentsBusinessError);
+		},
+	);
+
 	test("generated paths use baseUrl and preserve notification placeholders", async () => {
 		const urls: string[] = [];
 		const bodies: unknown[] = [];
@@ -153,6 +268,51 @@ describe("PaymentsModule", () => {
 		}
 	});
 
+	test.each([
+		{ TransactionId: 42, AcsUrl: "https://acs.example/" },
+		{ TransactionId: 42, AcsUrl: "", PaReq: "abc" },
+		{ TransactionId: 0, AcsUrl: "https://acs.example/", PaReq: "abc" },
+	])("reports malformed authentication challenges as unknown: %j", async (Model) => {
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetchReturning({ Success: false, Model }),
+		});
+
+		await expect(
+			new PaymentsModule(http).chargeCryptogram({
+				Amount: 10,
+				IpAddress: "127.0.0.1",
+				CardCryptogramPacket: "crypto",
+			}),
+		).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+	});
+
+	test("retains a pending transaction when its authentication challenge is incomplete", async () => {
+		const Model = {
+			TransactionId: 42,
+			Status: "AwaitingAuthentication",
+			Reason: "ThreeDomainSecure",
+		};
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetchReturning({ Success: false, Model }),
+		});
+
+		try {
+			await new PaymentsModule(http).chargeCryptogram({
+				Amount: 10,
+				IpAddress: "127.0.0.1",
+				CardCryptogramPacket: "crypto",
+			});
+			throw new Error("request unexpectedly succeeded");
+		} catch (error) {
+			expect(error).toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+			if (!(error instanceof CloudPaymentsUnknownOutcomeError)) throw error;
+			expect(error.cause).toBeInstanceOf(CloudPaymentsSdkError);
+			expect((error.cause as CloudPaymentsSdkError).cause).toEqual(Model);
+		}
+	});
+
 	test("confirm returns undefined on Success without Model", async () => {
 		const http = new CloudPaymentsHttpClient({
 			credentials: creds,
@@ -187,6 +347,81 @@ describe("PaymentsModule", () => {
 			new PaymentsModule(http).refund({ TransactionId: 1, Amount: 1 }),
 		).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
 	});
+
+	test("refund reports a successful response without its transaction ID as unknown", async () => {
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetchReturning({ Success: true, Model: {} }),
+		});
+
+		await expect(
+			new PaymentsModule(http).refund({ TransactionId: 1, Amount: 1 }),
+		).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+	});
+
+	test("uses the sent idempotency options to classify a malformed mutation result", async () => {
+		const opts: { idempotencyKey?: string } = {};
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: (async () => {
+				opts.idempotencyKey = "not-sent";
+				return Response.json({ Success: true, Model: {} });
+			}) as unknown as typeof fetch,
+		});
+
+		await expect(
+			new PaymentsModule(http).chargeCryptogram(
+				{ Amount: 10, IpAddress: "127.0.0.1", CardCryptogramPacket: "crypto" },
+				opts,
+			),
+		).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+	});
+
+	test.each([{}, { TransactionId: 42 }, { TransactionId: "42", Status: "Completed" }])(
+		"reports malformed successful payment transactions as unknown: %j",
+		async (Model) => {
+			const http = new CloudPaymentsHttpClient({
+				credentials: creds,
+				fetch: mockFetchReturning({ Success: true, Model }),
+			});
+
+			await expect(
+				new PaymentsModule(http).chargeCryptogram({
+					Amount: 10,
+					IpAddress: "127.0.0.1",
+					CardCryptogramPacket: "crypto",
+				}),
+			).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+		},
+	);
+
+	test.each([null, {}, [], "response", { Success: "true", Model: {} }])(
+		"reports a malformed mutation envelope as unknown: %j",
+		async (envelope) => {
+			const http = new CloudPaymentsHttpClient({
+				credentials: creds,
+				fetch: mockFetchReturning(envelope),
+			});
+
+			await expect(
+				new PaymentsModule(http).refund({ TransactionId: 1, Amount: 1 }),
+			).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+		},
+	);
+
+	test("reports a malformed protected mutation envelope as a contract error", async () => {
+		const http = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetchReturning({}),
+		});
+
+		await expect(
+			new PaymentsModule(http).refund(
+				{ TransactionId: 1, Amount: 1 },
+				{ idempotencyKey: "refund-1" },
+			),
+		).rejects.toBeInstanceOf(CloudPaymentsSdkError);
+	});
 });
 
 describe("generated API surface", () => {
@@ -212,7 +447,12 @@ describe("generated API surface", () => {
 			retry: { maxAttempts: 1 },
 			fetch: (async (url: string | URL | Request) => {
 				urls.push(url.toString());
-				return mockFetchReturning({ Success: true, Model: [] })(url);
+				return mockFetchReturning({
+					Success: true,
+					Model: url.toString().includes("/payments/find")
+						? { TransactionId: 42, Status: "Completed" }
+						: [],
+				})(url);
 			}) as typeof fetch,
 		});
 

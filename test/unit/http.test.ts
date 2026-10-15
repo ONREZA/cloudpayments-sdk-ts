@@ -1,5 +1,9 @@
-import { describe, expect, test } from "bun:test";
-import { CloudPaymentsHttpClient, CloudPaymentsPublicHttpClient } from "../../src/core/http.js";
+import { describe, expect, spyOn, test } from "bun:test";
+import {
+	CloudPaymentsHttpClient,
+	CloudPaymentsPublicHttpClient,
+	type PostOptions,
+} from "../../src/core/http.js";
 import {
 	CloudPaymentsAuthError,
 	CloudPaymentsHttpError,
@@ -54,6 +58,58 @@ describe("CloudPaymentsHttpClient.post", () => {
 		});
 		await client.post("https://api.cloudpayments.ru/test", {}, { idempotencyKey: "abc-123" });
 		expect(capturedHeaders["X-Request-ID"]).toBe("abc-123");
+	});
+
+	test.each([
+		"",
+		" ",
+		" payment-42 ",
+		"payment\t42",
+		"payment\r\n42",
+		"payment\u000042",
+		"payment-💳",
+	])("rejects an invalid idempotency key before sending: %j", async (idempotencyKey) => {
+		let calls = 0;
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxAttempts: 2, baseDelayMs: 0 },
+			fetch: mockFetch(async () => {
+				calls++;
+				return new Response("retry", { status: 503 });
+			}),
+		});
+
+		await expect(client.post("/", {}, { idempotencyKey })).rejects.toBeInstanceOf(
+			CloudPaymentsSdkError,
+		);
+		expect(calls).toBe(0);
+	});
+
+	test("snapshots the idempotency key before request serialization can mutate options", async () => {
+		const opts: PostOptions = { idempotencyKey: "payment-42" };
+		const requestIds: Array<string | null> = [];
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0 },
+			fetch: mockFetch(async (_url, init) => {
+				requestIds.push(new Headers(init.headers).get("X-Request-ID"));
+				return requestIds.length === 1
+					? new Response("retry", { status: 503 })
+					: Response.json({ Success: true });
+			}),
+		});
+
+		await client.post(
+			"/",
+			{
+				toJSON() {
+					delete opts.idempotencyKey;
+					return {};
+				},
+			},
+			opts,
+		);
+		expect(requestIds).toEqual(["payment-42", "payment-42"]);
 	});
 
 	test("throws CloudPaymentsAuthError on 401", async () => {
@@ -159,6 +215,24 @@ describe("CloudPaymentsHttpClient.post", () => {
 		expect(calls).toBe(1);
 	});
 
+	test.each([500, 501, 599])(
+		"reports mutation HTTP %d as unknown even when retries exclude it",
+		async (status) => {
+			let calls = 0;
+			const client = new CloudPaymentsHttpClient({
+				credentials: creds,
+				retry: { retryableStatuses: [] },
+				fetch: mockFetch(async () => {
+					calls++;
+					return new Response("error", { status });
+				}),
+			});
+
+			await expect(client.post("/", {})).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+			expect(calls).toBe(1);
+		},
+	);
+
 	test("retries mutation with the same idempotency key", async () => {
 		const requestIds: string[] = [];
 		const client = new CloudPaymentsHttpClient({
@@ -176,6 +250,57 @@ describe("CloudPaymentsHttpClient.post", () => {
 
 		expect(requestIds).toEqual(["payment-42", "payment-42"]);
 	});
+
+	test("refuses a mutation retry delayed beyond the provider idempotency window", async () => {
+		let calls = 0;
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetch(async () => {
+				calls++;
+				return new Response("retry", { status: 429, headers: { "Retry-After": "3600" } });
+			}),
+		});
+
+		await expect(
+			client.post("/", {}, { idempotencyKey: "payment-42", signal: AbortSignal.timeout(10) }),
+		).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+		expect(calls).toBe(1);
+	});
+
+	test.each(["safe", "requires-idempotency"] as const)(
+		"checks the idempotency deadline after a delayed hook only for mutation: %s",
+		async (replaySafety) => {
+			const clock = spyOn(performance, "now").mockReturnValue(0);
+			let calls = 0;
+			try {
+				const client = new CloudPaymentsHttpClient({
+					credentials: creds,
+					retry: { maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0 },
+					hooks: {
+						onRequest: ({ attempt }) => {
+							if (attempt === 1) clock.mockReturnValue(3_600_000);
+						},
+					},
+					fetch: mockFetch(async () => {
+						calls++;
+						return calls === 1
+							? new Response("retry", { status: 503 })
+							: Response.json({ Success: true });
+					}),
+				});
+				const request = client.post("/", {}, { idempotencyKey: "payment-42", replaySafety });
+				if (replaySafety === "safe") {
+					await expect(request).resolves.toEqual({ Success: true });
+					expect(calls).toBe(2);
+				} else {
+					await expect(request).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+					expect(calls).toBe(1);
+				}
+			} finally {
+				clock.mockRestore();
+			}
+		},
+	);
 
 	test("partial request retry options preserve client maxAttempts", async () => {
 		let calls = 0;

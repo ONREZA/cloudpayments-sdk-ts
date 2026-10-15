@@ -6,7 +6,7 @@
  *
  * Запуск:
  *   CP_PUBLIC_ID=pk_... CP_API_SECRET=... \
- *   CP_CRYPTOGRAM="..." CP_IP=1.2.3.4 CP_ACCOUNT_ID=user_1 \
+ *   CP_CRYPTOGRAM="..." CP_IP=1.2.3.4 CP_ACCOUNT_ID=user_1 CP_REQUEST_ID=payment-attempt-42 \
  *   bun examples/basic-charge.ts
  */
 import {
@@ -14,7 +14,11 @@ import {
 	CloudPaymentsBusinessError,
 	CloudPaymentsClient,
 	CloudPaymentsError,
+	CloudPaymentsUnknownOutcomeError,
 } from "@onreza/cloudpayments-sdk";
+
+const requestId = process.env.CP_REQUEST_ID;
+if (!requestId) throw new Error("Set CP_REQUEST_ID to the persisted ID of this payment attempt");
 
 const cp = new CloudPaymentsClient({
 	publicId: process.env.CP_PUBLIC_ID ?? "",
@@ -32,10 +36,10 @@ try {
 			Description: "Test payment via SDK example",
 			// SaveCard: true, — если хотите получить Token для рекарринга
 		},
-		{ idempotencyKey: process.env.CP_REQUEST_ID ?? crypto.randomUUID() },
+		{ idempotencyKey: requestId },
 	);
 
-	console.log("✓ Approved");
+	console.log("Payment response received; reconcile this transaction before fulfilling the order");
 	console.log(`  TransactionId=${tx.TransactionId}`);
 	console.log(`  Status=${tx.Status}`);
 	console.log(`  Amount=${tx.Amount} ${tx.Currency}`);
@@ -47,8 +51,10 @@ try {
 		console.log(`  Redirect to: ${err.acsUrl}`);
 		console.log(`  With: MD=${err.transactionId}, PaReq=${err.paReq.slice(0, 30)}…`);
 		console.log(`  After: call cp.payments.post3ds({ TransactionId, PaRes }, { idempotencyKey })`);
+	} else if (err instanceof CloudPaymentsUnknownOutcomeError) {
+		console.error("Payment outcome unknown; reconcile the existing attempt before retrying");
 	} else if (err instanceof CloudPaymentsBusinessError) {
-		console.log("✗ Declined");
+		console.log("Provider rejected the request; inspect the transaction context");
 		console.log(`  ReasonCode=${err.reasonCode}`);
 		console.log(`  Message=${err.apiMessage}`);
 	} else if (err instanceof CloudPaymentsError) {

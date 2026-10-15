@@ -7,7 +7,10 @@ import type {
 	PaymentBlocks,
 	PaymentBlocksConstructor,
 	WidgetIntentOptions,
+	WidgetWaitOptions,
+	WidgetWaitResult,
 } from "../src/browser/index.js";
+import { waitForWidgetResult } from "../src/browser/index.js";
 import type { DolyameCreatePaymentLinkRequest } from "../src/index.js";
 
 const intent: WidgetIntentOptions = {
@@ -40,7 +43,16 @@ declare const PaymentBlocksClass: PaymentBlocksConstructor;
 declare const checkout: Checkout;
 declare const CheckoutClass: CheckoutConstructor;
 
-void widget.start(intent);
+const attempt = widget.start(intent);
+const waitOptions: WidgetWaitOptions = { timeoutMs: 30_000, signal: new AbortController().signal };
+const observation: Promise<WidgetWaitResult> = waitForWidgetResult(attempt, waitOptions);
+void observation.then((result) => {
+	if (result.status === "reported") return result.result.isAwaitingResult;
+	if (result.reason === "error") return result.error;
+	return result.reason;
+});
+// @ts-expect-error The observer takes an existing promise, never a widget or a new payment intent.
+void waitForWidgetResult(widget);
 void new Widget({ language: "de-DE", sbpSupport: true });
 void new PaymentBlocksClass(
 	{

@@ -60,9 +60,11 @@ export class PaymentsModule extends BaseModule {
 			...opts,
 			replaySafety: "safe",
 		});
+		this.validateEnvelope(env);
 		if (!env.Success)
 			throw new CloudPaymentsBusinessError(env.Message ?? "", null, undefined, env.ErrorCode);
-		if (!env.Message) throw new CloudPaymentsSdkError("CloudPayments test response has no Message");
+		if (typeof env.Message !== "string" || !env.Message)
+			throw new CloudPaymentsSdkError("CloudPayments test response has no Message");
 		return env.Message;
 	}
 
@@ -71,44 +73,27 @@ export class PaymentsModule extends BaseModule {
 		body: PaymentsChargeCryptogramRequest,
 		opts?: ExecOptions,
 	): Promise<Transaction> {
-		return this.exec<PaymentsChargeCryptogramRequest, Transaction>(
-			PAYMENTS_CHARGE_CRYPTOGRAM_URL,
-			body,
-			opts,
-			{ detect3ds: true },
-		);
+		return this.execTransaction(PAYMENTS_CHARGE_CRYPTOGRAM_URL, body, opts, true);
 	}
 
 	/** Двухстадийная оплата по криптограмме (auth). Требует последующего {@link confirm}. */
 	authCryptogram(body: PaymentsAuthCryptogramRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsAuthCryptogramRequest, Transaction>(
-			PAYMENTS_AUTH_CRYPTOGRAM_URL,
-			body,
-			opts,
-			{ detect3ds: true },
-		);
+		return this.execTransaction(PAYMENTS_AUTH_CRYPTOGRAM_URL, body, opts, true);
 	}
 
 	/** Завершить 3DS: после того как плательщик вернулся с TermUrl с PaRes. */
 	post3ds(body: PaymentsPost3dsRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsPost3dsRequest, Transaction>(PAYMENTS_POST3DS_URL, body, opts);
+		return this.execTransaction(PAYMENTS_POST3DS_URL, body, opts);
 	}
 
 	/** Одностадийная оплата по сохранённому токену (рекарринг). */
 	chargeToken(body: PaymentsChargeTokenRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsChargeTokenRequest, Transaction>(
-			PAYMENTS_CHARGE_TOKEN_URL,
-			body,
-			opts,
-			{ detect3ds: true },
-		);
+		return this.execTransaction(PAYMENTS_CHARGE_TOKEN_URL, body, opts, true);
 	}
 
 	/** Двухстадийная оплата по сохранённому токену. */
 	authToken(body: PaymentsAuthTokenRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsAuthTokenRequest, Transaction>(PAYMENTS_AUTH_TOKEN_URL, body, opts, {
-			detect3ds: true,
-		});
+		return this.execTransaction(PAYMENTS_AUTH_TOKEN_URL, body, opts, true);
 	}
 
 	/** Подтверждение двухстадийного платежа (списание после auth). */
@@ -131,6 +116,7 @@ export class PaymentsModule extends BaseModule {
 			PAYMENTS_REFUND_URL,
 			body,
 			opts,
+			{ validateModel: validateTransactionId },
 		);
 	}
 
@@ -139,25 +125,29 @@ export class PaymentsModule extends BaseModule {
 		body: PaymentsPayoutCryptogramRequest,
 		opts?: ExecOptions,
 	): Promise<Transaction> {
-		return this.exec<PaymentsPayoutCryptogramRequest, Transaction>(
-			PAYMENTS_PAYOUT_CRYPTOGRAM_URL,
-			body,
-			opts,
-		);
+		return this.execTransaction(PAYMENTS_PAYOUT_CRYPTOGRAM_URL, body, opts);
 	}
 
 	/** Выплата на карту по сохранённому токену. */
 	payoutToken(body: PaymentsPayoutTokenRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsPayoutTokenRequest, Transaction>(
-			PAYMENTS_PAYOUT_TOKEN_URL,
-			body,
-			opts,
-		);
+		return this.execTransaction(PAYMENTS_PAYOUT_TOKEN_URL, body, opts);
 	}
 
 	/** Выплата по СБП. */
 	payoutSbp(body: PaymentsPayoutSbpRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsPayoutSbpRequest, Transaction>(PAYMENTS_PAYOUT_SBP_URL, body, opts);
+		return this.execTransaction(PAYMENTS_PAYOUT_SBP_URL, body, opts);
+	}
+
+	private async execTransaction<TReq>(
+		url: string,
+		body: TReq,
+		opts: ExecOptions = {},
+		detect3ds = false,
+	): Promise<Transaction> {
+		return this.exec<TReq, Transaction>(url, body, opts, {
+			detect3ds,
+			validateModel: validateTransaction,
+		});
 	}
 
 	/**
@@ -168,14 +158,30 @@ export class PaymentsModule extends BaseModule {
 	 * мы его и отдаём. Бросаем {@link CloudPaymentsBusinessError} только если
 	 * Model пуст (транзакция не найдена, неверный ID и т.п.).
 	 */
-	async get(body: PaymentsGetRequest, opts?: ExecOptions): Promise<Transaction> {
-		const env = await this.http.post<ApiEnvelope<Transaction>>(PAYMENTS_GET_URL, body, {
+	get(body: PaymentsGetRequest, opts?: ExecOptions): Promise<Transaction> {
+		return this.readTransaction(PAYMENTS_GET_URL, body, opts);
+	}
+
+	private async readTransaction(
+		url: string,
+		body: PaymentsGetRequest | PaymentsFindRequest | PaymentsFindLegacyRequest,
+		opts?: ExecOptions,
+	): Promise<Transaction> {
+		const expectedTransactionId = "TransactionId" in body ? body.TransactionId : undefined;
+		const env = await this.http.post<ApiEnvelope<Transaction>>(url, body, {
 			...opts,
 			replaySafety: "safe",
 		});
-		if (env.Model && typeof env.Model === "object" && "TransactionId" in env.Model) {
-			return env.Model as Transaction;
+		this.validateEnvelope(env);
+		if (env.Model !== undefined && env.Model !== null) {
+			const model = validateTransaction(env.Model);
+			if (expectedTransactionId !== undefined && model.TransactionId !== expectedTransactionId) {
+				throw new CloudPaymentsSdkError("CloudPayments returned a different transaction");
+			}
+			return model;
 		}
+		if (env.Success)
+			throw new CloudPaymentsSdkError("CloudPayments successful response has no Model");
 		throw new CloudPaymentsBusinessError(
 			env.Message ?? "Transaction not found",
 			env.Model,
@@ -186,16 +192,12 @@ export class PaymentsModule extends BaseModule {
 
 	/** Найти последнюю операцию по InvoiceId через актуальный v2 endpoint. */
 	find(body: PaymentsFindRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsFindRequest, Transaction>(PAYMENTS_FIND_URL, body, opts, {
-			replaySafety: "safe",
-		});
+		return this.readTransaction(PAYMENTS_FIND_URL, body, opts);
 	}
 
 	/** @deprecated Старый endpoint не ищет возвраты и выплаты. Используйте {@link find}. */
 	findLegacy(body: PaymentsFindLegacyRequest, opts?: ExecOptions): Promise<Transaction> {
-		return this.exec<PaymentsFindLegacyRequest, Transaction>(PAYMENTS_FIND_LEGACY_URL, body, opts, {
-			replaySafety: "safe",
-		});
+		return this.readTransaction(PAYMENTS_FIND_LEGACY_URL, body, opts);
 	}
 
 	/** Список транзакций за сутки. */
@@ -268,5 +270,24 @@ export class PaymentsModule extends BaseModule {
 			opts,
 			{ replaySafety: "safe" },
 		);
+	}
+}
+
+function validateTransaction(model: Transaction): Transaction {
+	validateTransactionId(model);
+	if (typeof model.Status !== "string" || !model.Status) {
+		throw new CloudPaymentsSdkError("CloudPayments response has an invalid transaction Model");
+	}
+	return model;
+}
+
+function validateTransactionId(model: { TransactionId: number }): void {
+	if (
+		!model ||
+		typeof model !== "object" ||
+		!Number.isSafeInteger(model.TransactionId) ||
+		model.TransactionId <= 0
+	) {
+		throw new CloudPaymentsSdkError("CloudPayments response has an invalid transaction Model");
 	}
 }

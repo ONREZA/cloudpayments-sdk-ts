@@ -69,8 +69,9 @@ const RECEIPT_STATUSES = new Set<KktReceiptStatus>(["Processed", "Error", "Queue
 
 export class KktModule extends BaseModule {
 	async fiscalize(body: KktFiscalizeRequest, opts?: ExecOptions): Promise<string> {
-		const env = await this.postEnvelope<undefined>(KKT_FISCALIZE_URL, body, opts);
-		return requireMessage(env, "CloudKassir fiscalization");
+		return this.mutate<undefined, string>(KKT_FISCALIZE_URL, body, opts, (env) =>
+			requireMessage(env, "CloudKassir fiscalization"),
+		);
 	}
 
 	async submitReceipt(
@@ -161,8 +162,9 @@ export class KktModule extends BaseModule {
 		body: KktUpdateCashRegisterStateRequest,
 		opts?: ExecOptions,
 	): Promise<string> {
-		const env = await this.postEnvelope<undefined>(KKT_UPDATE_CASH_REGISTER_STATE_URL, body, opts);
-		return requireMessage(env, "CloudKassir cash-register state update");
+		return this.mutate<undefined, string>(KKT_UPDATE_CASH_REGISTER_STATE_URL, body, opts, (env) =>
+			requireMessage(env, "CloudKassir cash-register state update"),
+		);
 	}
 
 	async getCashRegisterState(
@@ -196,18 +198,25 @@ export class KktModule extends BaseModule {
 		body: KktSubmitReceiptRequest | KktSubmitCorrectionReceiptRequest,
 		opts?: ExecOptions,
 	): Promise<KktReceiptSubmissionResult> {
-		const env = await this.postEnvelope<ReceiptSubmissionModel>(url, body, opts);
-		const model = requireModel(env, "CloudKassir receipt submission");
-		const id = model.Id?.trim();
-		if (!id) throw new CloudPaymentsSdkError("CloudKassir receipt submission has no Id");
-		return {
-			Id: id,
-			ErrorCode: model.ErrorCode ?? null,
-			ReceiptLocalUrl: model.ReceiptLocalUrl ?? null,
-			Message: env.Message ?? null,
-			Warning: env.Warning ?? null,
-			WarningCodes: env.WarningCodes ?? [],
-		};
+		return this.mutate<ReceiptSubmissionModel, KktReceiptSubmissionResult>(
+			url,
+			body,
+			opts,
+			(env) => {
+				const model = requireModel(env, "CloudKassir receipt submission");
+				if (typeof model.Id !== "string" || !model.Id.trim()) {
+					throw new CloudPaymentsSdkError("CloudKassir receipt submission has no Id");
+				}
+				return {
+					Id: model.Id.trim(),
+					ErrorCode: model.ErrorCode ?? null,
+					ReceiptLocalUrl: model.ReceiptLocalUrl ?? null,
+					Message: env.Message ?? null,
+					Warning: env.Warning ?? null,
+					WarningCodes: env.WarningCodes ?? [],
+				};
+			},
+		);
 	}
 
 	private async getStatus(
@@ -236,6 +245,28 @@ export class KktModule extends BaseModule {
 		this.unwrap(env, false, true);
 		return env;
 	}
+
+	private async mutate<TModel, TResult>(
+		url: string,
+		body: unknown,
+		opts: ExecOptions | undefined,
+		parse: (env: KktEnvelope<TModel>) => TResult,
+	): Promise<TResult> {
+		const options = { ...opts };
+		const env = await this.http.post<KktEnvelope<TModel>>(url, body, {
+			...options,
+			replaySafety: "requires-idempotency",
+		});
+		try {
+			this.unwrap(env, false, true);
+			return parse(env);
+		} catch (error) {
+			if (error instanceof CloudPaymentsSdkError) {
+				this.throwContractError(error, url, options);
+			}
+			throw error;
+		}
+	}
 }
 
 function requireModel<T>(env: ApiEnvelope<T>, contract: string): T {
@@ -246,6 +277,7 @@ function requireModel<T>(env: ApiEnvelope<T>, contract: string): T {
 }
 
 function requireMessage(env: ApiEnvelope<unknown>, contract: string): string {
-	if (!env.Message) throw new CloudPaymentsSdkError(`${contract} response has no Message`);
+	if (typeof env.Message !== "string" || !env.Message)
+		throw new CloudPaymentsSdkError(`${contract} response has no Message`);
 	return env.Message;
 }

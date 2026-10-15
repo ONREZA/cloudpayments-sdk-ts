@@ -32,6 +32,7 @@ export class DolyameModule extends BaseModule {
 		body: DolyameCreatePaymentLinkRequest,
 		opts: ExecOptions = {},
 	): Promise<DolyamePayment> {
+		opts = { ...opts };
 		const env = await this.http.post<DolyameApiEnvelope>(DOLYAME_CREATE_PAYMENT_LINK_URL, body, {
 			...opts,
 			replaySafety: "requires-idempotency",

@@ -12,4 +12,6 @@ export {
 	loadCloudPaymentsPaymentBlocks,
 	loadCloudPaymentsWidget,
 } from "./loader.js";
+export type { WidgetWaitOptions, WidgetWaitResult } from "./payment.js";
+export { waitForWidgetResult } from "./payment.js";
 export type * from "./types.js";

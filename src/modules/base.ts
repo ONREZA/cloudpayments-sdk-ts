@@ -9,10 +9,11 @@ import type { ApiEnvelope } from "../types.js";
 
 export type ExecOptions = Omit<PostOptions, "replaySafety">;
 
-interface ExecBehavior {
+interface ExecBehavior<T> {
 	detect3ds?: boolean;
 	replaySafety?: RequestReplaySafety;
 	allowMissingModel?: boolean;
+	validateModel?: (model: T) => void;
 }
 
 interface ModuleHttpClient {
@@ -31,14 +32,21 @@ export abstract class BaseModule {
 		url: string,
 		body: TReq,
 		opts: ExecOptions = {},
-		behavior: ExecBehavior = {},
+		behavior: ExecBehavior<TRes> = {},
 	): Promise<TRes> {
+		opts = { ...opts };
 		const env = await this.http.post<ApiEnvelope<TRes>>(url, body, {
 			...opts,
 			replaySafety: behavior.replaySafety ?? "requires-idempotency",
 		});
 		try {
-			return this.unwrap(env, behavior.detect3ds ?? false, behavior.allowMissingModel ?? false);
+			const model = this.unwrap(
+				env,
+				behavior.detect3ds ?? false,
+				behavior.allowMissingModel ?? false,
+			);
+			behavior.validateModel?.(model);
+			return model;
 		} catch (error) {
 			if (error instanceof CloudPaymentsSdkError) {
 				this.throwContractError(error, url, opts, behavior.replaySafety ?? "requires-idempotency");
@@ -49,6 +57,7 @@ export abstract class BaseModule {
 
 	/** Универсальная распаковка envelope. */
 	protected unwrap<T>(env: ApiEnvelope<T>, detect3ds: boolean, allowMissingModel = false): T {
+		this.validateEnvelope(env);
 		if (env.Success) {
 			if (env.Model === undefined || env.Model === null) {
 				if (allowMissingModel) return undefined as T;
@@ -66,9 +75,28 @@ export abstract class BaseModule {
 				m,
 			);
 		}
+		if (
+			detect3ds &&
+			env.Model &&
+			typeof env.Model === "object" &&
+			("AcsUrl" in env.Model ||
+				"PaReq" in env.Model ||
+				("Status" in env.Model && env.Model.Status === "AwaitingAuthentication"))
+		) {
+			throw new CloudPaymentsSdkError(
+				"CloudPayments response has an invalid 3-D Secure challenge",
+				env.Model,
+			);
+		}
 		const model = env.Model;
 		const reasonCode = extractReasonCode(model);
 		throw new CloudPaymentsBusinessError(env.Message ?? "", model, reasonCode, env.ErrorCode);
+	}
+
+	protected validateEnvelope(env: ApiEnvelope<unknown>): void {
+		if (!env || typeof env !== "object" || typeof env.Success !== "boolean") {
+			throw new CloudPaymentsSdkError("CloudPayments response has no boolean Success flag");
+		}
 	}
 
 	protected throwContractError(
@@ -96,8 +124,12 @@ function is3DsChallenge(model: unknown): model is ThreeDsErrorPayload {
 	const m = model as Record<string, unknown>;
 	return (
 		typeof m.TransactionId === "number" &&
+		Number.isSafeInteger(m.TransactionId) &&
+		m.TransactionId > 0 &&
 		typeof m.AcsUrl === "string" &&
+		m.AcsUrl.length > 0 &&
 		typeof m.PaReq === "string" &&
+		m.PaReq.length > 0 &&
 		(m.ThreeDsCallbackId === undefined ||
 			m.ThreeDsCallbackId === null ||
 			typeof m.ThreeDsCallbackId === "string")

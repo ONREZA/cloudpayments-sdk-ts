@@ -28,9 +28,8 @@ export class CloudPaymentsNetworkError extends CloudPaymentsError {
 }
 
 /**
- * Неоднозначный результат mutation-запроса без ключа идемпотентности.
- * Сюда входят сетевой обрыв, transient HTTP-ошибка и некорректный успешный
- * ответ: операция могла быть обработана, поэтому её нужно сначала сверить.
+ * Ambiguous mutation outcome without idempotency protection, including retries
+ * that exceed the provider cache window. Reconcile before submitting again.
  */
 export class CloudPaymentsUnknownOutcomeError extends CloudPaymentsError {
 	constructor(

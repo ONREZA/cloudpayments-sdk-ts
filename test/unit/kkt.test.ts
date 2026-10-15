@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { CloudPaymentsClient } from "../../src/client.js";
-import { CloudPaymentsBusinessError, CloudPaymentsSdkError } from "../../src/errors/index.js";
+import {
+	CloudPaymentsBusinessError,
+	CloudPaymentsSdkError,
+	CloudPaymentsUnknownOutcomeError,
+} from "../../src/errors/index.js";
 
 const credentials = { publicId: "pk_test", apiSecret: "secret" };
 
@@ -9,6 +13,67 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe("KktModule", () => {
+	test.each(["idempotency", "serialization"] as const)(
+		"keeps a preflight %s failure as a contract error without sending",
+		async (failure) => {
+			let calls = 0;
+			const client = new CloudPaymentsClient({
+				...credentials,
+				fetch: (async () => {
+					calls++;
+					return response({ Success: true });
+				}) as unknown as typeof fetch,
+			});
+			const body = {
+				Inn: "7700000000",
+				Type: "Income" as const,
+				CustomerReceipt: {
+					Items: [{ label: "Item", price: 10, quantity: 1, amount: 10 }],
+				},
+				toJSON() {
+					if (failure === "serialization") throw new Error("Cannot serialize receipt");
+					return {};
+				},
+			};
+
+			await expect(
+				client.kkt.submitReceipt(body, failure === "idempotency" ? { idempotencyKey: " " } : {}),
+			).rejects.toBeInstanceOf(CloudPaymentsSdkError);
+			expect(calls).toBe(0);
+		},
+	);
+
+	test.each([null, {}, { Success: "true" }])(
+		"reports malformed receipt submission envelopes as unknown: %j",
+		async (envelope) => {
+			const client = new CloudPaymentsClient({
+				...credentials,
+				fetch: (async () => response(envelope)) as unknown as typeof fetch,
+			});
+
+			await expect(
+				client.kkt.submitReceipt({
+					Inn: "7700000000",
+					Type: "Income",
+					CustomerReceipt: {
+						Items: [{ label: "Item", price: 10, quantity: 1, amount: 10 }],
+					},
+				}),
+			).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+		},
+	);
+
+	test("keeps malformed read-only envelopes as contract errors", async () => {
+		const client = new CloudPaymentsClient({
+			...credentials,
+			fetch: (async () => response({})) as unknown as typeof fetch,
+		});
+
+		await expect(client.kkt.getReceiptStatus({ Id: "receipt-1" })).rejects.toBeInstanceOf(
+			CloudPaymentsSdkError,
+		);
+	});
+
 	test("submitReceipt sends a typed receipt and preserves warnings", async () => {
 		const requests: Array<{ url: string; body: unknown; requestId: string | null }> = [];
 		const client = new CloudPaymentsClient({
@@ -121,7 +186,7 @@ describe("KktModule", () => {
 		);
 	});
 
-	test("rejects a successful fiscalization response without Message", async () => {
+	test("reports a successful fiscalization response without Message as unknown", async () => {
 		const client = new CloudPaymentsClient({
 			...credentials,
 			retry: { maxAttempts: 1 },
@@ -140,6 +205,34 @@ describe("KktModule", () => {
 				MerchantEmail: "merchant@example.test",
 				MerchantPhone: "+71234567890",
 			}),
-		).rejects.toBeInstanceOf(CloudPaymentsSdkError);
+		).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+	});
+
+	test.each([
+		{ Success: true },
+		{ Success: true, Model: {} },
+		{ Success: true, Model: { Id: 42 } },
+	])("reports incomplete receipt submission results as unknown: %j", async (envelope) => {
+		const opts: { idempotencyKey?: string } = {};
+		const client = new CloudPaymentsClient({
+			...credentials,
+			fetch: (async () => {
+				opts.idempotencyKey = "not-sent";
+				return response(envelope);
+			}) as unknown as typeof fetch,
+		});
+
+		await expect(
+			client.kkt.submitReceipt(
+				{
+					Inn: "7700000000",
+					Type: "Income",
+					CustomerReceipt: {
+						Items: [{ label: "Item", price: 10, quantity: 1, amount: 10 }],
+					},
+				},
+				opts,
+			),
+		).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
 	});
 });

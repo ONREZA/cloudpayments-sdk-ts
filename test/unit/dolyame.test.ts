@@ -124,4 +124,18 @@ describe("DolyameModule", () => {
 			client.dolyame.createPaymentLink(request, { idempotencyKey: "order-42" }),
 		).rejects.toBeInstanceOf(CloudPaymentsSdkError);
 	});
+
+	test("uses the sent options when the caller changes its idempotency key", async () => {
+		const opts: { idempotencyKey?: string } = {};
+		const client = new CloudPaymentsPublicClient({
+			fetch: mockFetch(async () => {
+				opts.idempotencyKey = "not-sent";
+				return Response.json({ Success: true });
+			}),
+		});
+
+		await expect(client.dolyame.createPaymentLink(request, opts)).rejects.toBeInstanceOf(
+			CloudPaymentsUnknownOutcomeError,
+		);
+	});
 });

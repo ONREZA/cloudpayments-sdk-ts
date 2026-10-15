@@ -111,6 +111,9 @@ export interface PostOptions {
 }
 
 const DEFAULT_USER_AGENT = `${CP_SDK_NAME}/${CP_SDK_VERSION}`;
+const IDEMPOTENCY_WINDOW_MS = 3_600_000;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Request IDs must not contain HTTP control characters.
+const REQUEST_ID_CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 
 abstract class BaseCloudPaymentsHttpClient {
 	readonly #authorization: string | undefined;
@@ -138,7 +141,23 @@ abstract class BaseCloudPaymentsHttpClient {
 	 * HTTP-уровень — не бизнес: { Success: false } здесь НЕ бросается.
 	 */
 	async post<T>(url: string, body: unknown, opts: PostOptions = {}): Promise<T> {
+		opts = { ...opts };
 		const absoluteUrl = this.#resolveUrl(url);
+		if (opts.idempotencyKey !== undefined) {
+			try {
+				if (
+					typeof opts.idempotencyKey !== "string" ||
+					!opts.idempotencyKey ||
+					REQUEST_ID_CONTROL_CHARACTERS.test(opts.idempotencyKey) ||
+					new Headers({ "X-Request-ID": opts.idempotencyKey }).get("X-Request-ID") !==
+						opts.idempotencyKey
+				) {
+					throw new Error("Idempotency key must be a nonempty, unchanged HTTP header value");
+				}
+			} catch (cause) {
+				throw new CloudPaymentsSdkError("Invalid idempotency key", cause);
+			}
+		}
 
 		const configuredRetry =
 			opts.retry === false
@@ -177,6 +196,17 @@ abstract class BaseCloudPaymentsHttpClient {
 		delete telemetryHeaders.Authorization;
 
 		let lastError: unknown = null;
+		let replayDeadline: number | undefined;
+		const checkReplayWindow = (delayMs = 0) => {
+			if (replayDeadline !== undefined && performance.now() + delayMs >= replayDeadline) {
+				throw new CloudPaymentsUnknownOutcomeError(absoluteUrl, lastError);
+			}
+		};
+		const waitBeforeRetry = async (error: unknown, delayMs: number) => {
+			lastError = error;
+			checkReplayWindow(delayMs);
+			await sleep(delayMs, opts.signal);
+		};
 		for (let attempt = 0; attempt < retryCfg.maxAttempts; attempt++) {
 			const reqCtx: RequestContext = {
 				method: "POST",
@@ -207,6 +237,10 @@ abstract class BaseCloudPaymentsHttpClient {
 					timeoutCtrl.abort(new DOMException("Request timeout", "TimeoutError"));
 				}, this.#timeoutMs);
 				startedAt = Date.now();
+				checkReplayWindow();
+				if (opts.replaySafety !== "safe" && opts.idempotencyKey) {
+					replayDeadline ??= performance.now() + IDEMPOTENCY_WINDOW_MS;
+				}
 
 				const res = await this.#fetch(absoluteUrl, {
 					method: "POST",
@@ -248,24 +282,26 @@ abstract class BaseCloudPaymentsHttpClient {
 					const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"));
 					const retryErr = new CloudPaymentsRateLimitError(res.statusText, text, retryAfterMs);
 					if (attempt + 1 < retryCfg.maxAttempts) {
-						lastError = retryErr;
-						await sleep(
+						await waitBeforeRetry(
+							retryErr,
 							retryAfterMs ?? computeBackoffMs(attempt, retryCfg.baseDelayMs, retryCfg.maxDelayMs),
-							opts.signal,
 						);
 						continue;
 					}
 					throw retryErr;
 				}
 				const httpErr = new CloudPaymentsHttpError(res.status, res.statusText, text);
+				if (res.status >= 500) {
+					const outcomeError = this.#ambiguousOutcomeError(httpErr, absoluteUrl, opts);
+					if (outcomeError !== httpErr) throw outcomeError;
+				}
 				if (retryCfg.retryableStatuses.includes(res.status)) {
 					const outcomeError = this.#ambiguousOutcomeError(httpErr, absoluteUrl, opts);
 					if (outcomeError !== httpErr) throw outcomeError;
 					if (attempt + 1 < retryCfg.maxAttempts) {
-						lastError = httpErr;
-						await sleep(
+						await waitBeforeRetry(
+							httpErr,
 							computeBackoffMs(attempt, retryCfg.baseDelayMs, retryCfg.maxDelayMs),
-							opts.signal,
 						);
 						continue;
 					}
@@ -287,10 +323,9 @@ abstract class BaseCloudPaymentsHttpClient {
 						this.#hooks.onError?.({ request: reqCtx, error: netErr, durationMs }),
 					);
 					if (retryCfg.retryOnNetworkError && attempt + 1 < retryCfg.maxAttempts) {
-						lastError = netErr;
-						await sleep(
+						await waitBeforeRetry(
+							netErr,
 							computeBackoffMs(attempt, retryCfg.baseDelayMs, retryCfg.maxDelayMs),
-							opts.signal,
 						);
 						continue;
 					}
@@ -312,10 +347,9 @@ abstract class BaseCloudPaymentsHttpClient {
 					this.#hooks.onError?.({ request: reqCtx, error: netErr, durationMs }),
 				);
 				if (retryCfg.retryOnNetworkError && attempt + 1 < retryCfg.maxAttempts) {
-					lastError = netErr;
-					await sleep(
+					await waitBeforeRetry(
+						netErr,
 						computeBackoffMs(attempt, retryCfg.baseDelayMs, retryCfg.maxDelayMs),
-						opts.signal,
 					);
 					continue;
 				}
