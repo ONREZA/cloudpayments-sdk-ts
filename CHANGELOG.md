@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.4.0...v0.5.0) (2026-10-15)
+
+
+### Features
+
+* **sdk:** make pending payments recoverable ([07fc3cd](https://github.com/ONREZA/cloudpayments-sdk-ts/commit/07fc3cde215711c390077e4cd67c449be4efff37))
+
 ## [0.4.0](https://github.com/ONREZA/cloudpayments-sdk-ts/compare/v0.3.1...v0.4.0) (2026-09-01)
 
 
