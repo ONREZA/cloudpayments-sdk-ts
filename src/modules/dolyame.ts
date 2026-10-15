@@ -23,7 +23,7 @@ interface DolyameApiEnvelope extends ApiEnvelope<DolyameWireModel> {
 
 /** Публичный API Долями. Запросы намеренно отправляются без Basic Auth. */
 export class DolyameModule extends BaseModule {
-	// biome-ignore lint/complexity/noUselessConstructor: публичная сигнатура не должна раскрывать внутренний ModuleHttpClient.
+	// Keep the public constructor signature independent of internal transport types.
 	constructor(http: CloudPaymentsPublicHttpClient) {
 		super(http);
 	}
