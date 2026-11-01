@@ -1,0 +1,257 @@
+{
+  "reason": "Preserve published QR image methods after their sections disappeared from official documentation; this snapshot does not establish current provider availability.",
+  "removedObservedAt": "2026-11-01",
+  "source": {
+    "url": "https://developers.cloudpayments.ru/",
+    "htmlSha256": "6711d8e779206fcab5a59d55122e549ff4e4264e549d91c5393a637f402f0fb0",
+    "htmlSize": 589276
+  },
+  "endpoints": [
+    {
+      "sectionAnchor": "t-pay",
+      "anchor": "poluchenie-qr-koda-dlya-oplaty",
+      "group": {
+        "anchor": "poluchenie-qr-koda-dlya-oplaty",
+        "title": "Получение QR-кода для оплаты",
+        "level": 2,
+        "description": "",
+        "notes": [],
+        "urls": [
+          {
+            "url": "https://api.cloudpayments.ru/payments/qr/tinkoffpay/image",
+            "label": "Адрес метода https://api.cloudpayments.ru/payments/qr/tinkoffpay/image"
+          }
+        ],
+        "params": [
+          {
+            "name": "publicId",
+            "type": "String",
+            "required": true,
+            "description": "Идентификатор сайта, который находится в ЛК"
+          },
+          {
+            "name": "Amount",
+            "type": "decimal",
+            "required": true,
+            "description": "Cумма платежа в валюте, разделитель точка. Количество не нулевых знаков после точки – 2"
+          },
+          {
+            "name": "Currency",
+            "type": "string",
+            "required": true,
+            "description": "Валюта: RUB (см. [справочник](#spisok-valyut))"
+          },
+          {
+            "name": "Scheme",
+            "type": "enum string",
+            "required": true,
+            "description": "Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `0` - одностадийная оплата `1` - двухстадийная оплата"
+          },
+          {
+            "name": "Browser",
+            "type": "string",
+            "required": true,
+            "description": "Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera`"
+          },
+          {
+            "name": "Os",
+            "type": "string",
+            "required": true,
+            "description": "Операционная система устройства плательщика. Пример значения: `Android`, `iOS`, `Windows`"
+          },
+          {
+            "name": "Webview",
+            "type": "bool",
+            "required": true,
+            "description": "Признак открытия браузера в режиме webview. Возможные значения: `true` - для оплат через webview `false` - для оплат без webview"
+          },
+          {
+            "name": "Device",
+            "type": "enum string",
+            "required": true,
+            "description": "Признак устройства плательщика. Возможные значения: `MobileApp` - вызов оплаты из мобильного приложения `DesktopWeb` - вызов оплаты из браузера с десктопа `Mobile` - вызов из браузера с мобильного устройства"
+          },
+          {
+            "name": "SuccessRedirectUrl",
+            "type": "string",
+            "required": true,
+            "description": "Url для перенаправления клиента после успешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка."
+          },
+          {
+            "name": "FailRedirectUrl",
+            "type": "string",
+            "required": true,
+            "description": "Url для перенаправления клиента после неуспешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка."
+          },
+          {
+            "name": "IpAddress",
+            "type": "string",
+            "required": false,
+            "description": "IP-адрес плательщика"
+          },
+          {
+            "name": "AccountId",
+            "type": "string",
+            "required": false,
+            "description": "Идентификатор пользователя"
+          },
+          {
+            "name": "Email",
+            "type": "string",
+            "required": false,
+            "description": "E-mail плательщика"
+          },
+          {
+            "name": "InvoiceId",
+            "type": "string",
+            "required": false,
+            "description": "Номер счёта или заказа"
+          },
+          {
+            "name": "Description",
+            "type": "string",
+            "required": false,
+            "description": "Назначение платежа в свободной форме"
+          },
+          {
+            "name": "JsonData",
+            "type": "json",
+            "required": false,
+            "description": "Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate`"
+          },
+          {
+            "name": "TtlMinutes",
+            "type": "int",
+            "required": false,
+            "description": "Время в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Если параметр не передан, оплату можно будет совершить в течение 24 часов. **Важно:** - Значение 0 считается **некорректным** и может привести к ошибке обработки запроса. - Если временное ограничение не требуется, параметр следует **не передавать** или явно указать как `null`."
+          },
+          {
+            "name": "SaveCard",
+            "type": "bool",
+            "required": false,
+            "description": "Признак сохранения карточного токена для проведения оплаты по сохранённой карте (см. [Оплата по токену (рекарринг)](#oplata-po-tokenu-rekarring)). Возможные значения: `true` - после успешной оплаты будет возвращён карточный токен, `false` - токен не будет возвращаться (по-умолчанию) Параметр SaveCard обрабатывается только при включении настройки \"Сохранение токена карты\" в Личном Кабинете. При включении настройки \"Сохранять принудительно\", параметр SaveCard будет игнорироваться."
+          }
+        ],
+        "tables": [],
+        "requestExamples": [],
+        "responseExamples": [],
+        "otherCodeBlocks": [],
+        "subgroups": []
+      }
+    },
+    {
+      "sectionAnchor": "sberpay",
+      "anchor": "sberpay-poluchenie-qr-koda-dlya-oplaty",
+      "group": {
+        "anchor": "sberpay-poluchenie-qr-koda-dlya-oplaty",
+        "title": "Получение QR-кода для оплаты",
+        "level": 2,
+        "description": "",
+        "notes": [],
+        "urls": [
+          {
+            "url": "https://api.cloudpayments.ru/payments/qr/sberpay/image",
+            "label": "Адрес метода"
+          }
+        ],
+        "params": [
+          {
+            "name": "PublicId",
+            "type": "String",
+            "required": true,
+            "description": "Идентификатор сайта, который находится в ЛК"
+          },
+          {
+            "name": "Amount",
+            "type": "Decimal",
+            "required": true,
+            "description": "Cумма платежа в рублях, разделитель точка. Количество не нулевых знаков после точки – 2"
+          },
+          {
+            "name": "Currency",
+            "type": "String",
+            "required": true,
+            "description": "Валюта: RUB (см. [справочник](#spisok-valyut))"
+          },
+          {
+            "name": "Description",
+            "type": "String",
+            "required": false,
+            "description": "Назначение платежа в свободной форме"
+          },
+          {
+            "name": "AccountId",
+            "type": "String",
+            "required": false,
+            "description": "Идентификатор пользователя, используется для создания подписки и получения токена"
+          },
+          {
+            "name": "Email",
+            "type": "String",
+            "required": false,
+            "description": "E-mail плательщика, на который будет отправлена квитанция об оплате"
+          },
+          {
+            "name": "JsonData",
+            "type": "Json",
+            "required": false,
+            "description": "Любые другие данные, которые будут связаны с транзакцией, в том числе [инструкции](#rekurrentnye-platezhi-podpiska) для создания подписки или формирования [онлайн-чека](#format-peredachi-dannyh-dlya-onlayn-cheka) должны обёртываться в объект `cloudpayments`. Мы зарезервировали названия следующих параметров и отображаем их содержимое в реестре операций, выгружаемом в Личном Кабинете: `name`, `firstName`, `middleName`, `lastName`, `nick`, `phone`, `address`, `comment`, `birthDate`"
+          },
+          {
+            "name": "InvoiceId",
+            "type": "String",
+            "required": false,
+            "description": "Идентификатор/номер счета. Приходит в Check-уведомлении и может использоваться для сверки номера заказа"
+          },
+          {
+            "name": "Scheme",
+            "type": "Enum String",
+            "required": true,
+            "description": "Схема проведения платежа (см. [Виды операций](#vidy-operatsiy)). Возможные значения: `charge` - одностадийная оплата; `auth` - двухстадийная оплата"
+          },
+          {
+            "name": "SuccessRedirectUrl",
+            "type": "String",
+            "required": false,
+            "description": "Url для перенаправления клиента после успешной оплаты. После проведения платежа, клиент будет перенаправлен на указанный адрес из мобильного приложения Банка."
+          },
+          {
+            "name": "IpAddress",
+            "type": "String",
+            "required": false,
+            "description": "IP-адрес плательщика"
+          },
+          {
+            "name": "Os",
+            "type": "String",
+            "required": true,
+            "description": "Операционная система устройства плательщика. Пример значения: `Android`, `iOS`, `Windows`"
+          },
+          {
+            "name": "Webview",
+            "type": "Bool",
+            "required": true,
+            "description": "Признак открытия браузера в режиме webview. Возможные значения: `true` - для оплат через webview `false` - для оплат без webview"
+          },
+          {
+            "name": "Device",
+            "type": "String",
+            "required": true,
+            "description": "Признак устройства плательщика. Возможные значения: `MobileApp` - вызов оплаты из мобильного приложения `DesktopWeb` - вызов оплаты из браузера с десктопа `Mobile` - вызов из браузера с мобильного устройства"
+          },
+          {
+            "name": "Browser",
+            "type": "String",
+            "required": true,
+            "description": "Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera`"
+          }
+        ],
+        "tables": [],
+        "requestExamples": [],
+        "responseExamples": [],
+        "otherCodeBlocks": [],
+        "subgroups": []
+      }
+    }
+  ]
+}

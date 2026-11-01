@@ -8,7 +8,16 @@ export default defineConfig({
 		browser: "src/browser/index.ts",
 	},
 	format: "esm",
+	platform: "neutral",
+	target: "es2024",
+	deps: { neverBundle: true },
 	dts: true,
 	sourcemap: true,
-	outExtensions: () => ({ js: ".js", dts: ".d.ts" }),
+	clean: true,
+	// Shared index modules need unique declaration chunk names.
+	hash: true,
+	treeshake: true,
+	minify: false,
+	publint: { strict: true },
+	attw: { profile: "esm-only", level: "error" },
 });

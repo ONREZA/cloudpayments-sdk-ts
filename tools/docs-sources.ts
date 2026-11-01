@@ -19,7 +19,7 @@ export const DOCS_SOURCES: Record<DocsSourceName, DocsSource> = {
 	cloudpayments: {
 		name: "cloudpayments",
 		label: "CloudPayments",
-		url: "https://developers.cloudpayments.ru/",
+		url: process.env.CLOUDPAYMENTS_DOCS_URL ?? "https://developers.cloudpayments.ru/",
 		rawPath: resolve(ROOT, "specs", "raw.html"),
 		previousRawPath: resolve(ROOT, "specs", "raw.prev.html"),
 		irPath: resolve(ROOT, "specs", "ir.json"),
@@ -29,7 +29,7 @@ export const DOCS_SOURCES: Record<DocsSourceName, DocsSource> = {
 	cloudkassir: {
 		name: "cloudkassir",
 		label: "CloudKassir",
-		url: "https://developers.cloudkassir.ru/",
+		url: process.env.CLOUDKASSIR_DOCS_URL ?? "https://developers.cloudkassir.ru/",
 		rawPath: resolve(ROOT, "specs", "cloudkassir", "raw.html"),
 		previousRawPath: resolve(ROOT, "specs", "cloudkassir", "raw.prev.html"),
 		irPath: resolve(ROOT, "specs", "cloudkassir", "ir.json"),

@@ -31,6 +31,7 @@ import {
 	type RetryOptions,
 	sleep,
 } from "./retry.js";
+import { getRequestState, type RequestState } from "./request-state.js";
 import { Semaphore } from "./semaphore.js";
 
 export interface RequestContext {
@@ -112,7 +113,7 @@ export interface PostOptions {
 
 const DEFAULT_USER_AGENT = `${CP_SDK_NAME}/${CP_SDK_VERSION}`;
 const IDEMPOTENCY_WINDOW_MS = 3_600_000;
-// biome-ignore lint/suspicious/noControlCharactersInRegex: Request IDs must not contain HTTP control characters.
+// eslint-disable-next-line no-control-regex -- Request IDs must not contain HTTP control characters.
 const REQUEST_ID_CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 
 abstract class BaseCloudPaymentsHttpClient {
@@ -129,6 +130,13 @@ abstract class BaseCloudPaymentsHttpClient {
 		this.#authorization = authorization;
 		this.#baseUrl = new URL(opts.baseUrl ?? "https://api.cloudpayments.ru");
 		this.#timeoutMs = opts.timeoutMs ?? 60_000;
+		if (
+			!Number.isFinite(this.#timeoutMs) ||
+			this.#timeoutMs <= 0 ||
+			this.#timeoutMs > 2_147_483_647
+		) {
+			throw new RangeError("timeoutMs must be finite, positive and <= 2147483647");
+		}
 		this.#retry = mergeRetryOptions(opts.retry);
 		this.#fetch = opts.fetch ?? globalThis.fetch;
 		this.#userAgent = opts.userAgent ?? DEFAULT_USER_AGENT;
@@ -141,6 +149,7 @@ abstract class BaseCloudPaymentsHttpClient {
 	 * HTTP-уровень — не бизнес: { Success: false } здесь НЕ бросается.
 	 */
 	async post<T>(url: string, body: unknown, opts: PostOptions = {}): Promise<T> {
+		const requestState = getRequestState(opts);
 		opts = { ...opts };
 		const absoluteUrl = this.#resolveUrl(url);
 		if (opts.idempotencyKey !== undefined) {
@@ -175,7 +184,8 @@ abstract class BaseCloudPaymentsHttpClient {
 		if (payload === undefined) {
 			throw new CloudPaymentsSdkError("Request body is not JSON-serializable");
 		}
-		const exec = () => this.#executeWithRetry<T>(absoluteUrl, payload, retryCfg, opts);
+		const exec = () =>
+			this.#executeWithRetry<T>(absoluteUrl, payload, retryCfg, opts, requestState);
 		return this.#semaphore ? this.#semaphore.run(exec, opts.signal) : exec();
 	}
 
@@ -184,6 +194,7 @@ abstract class BaseCloudPaymentsHttpClient {
 		payload: string,
 		retryCfg: Required<RetryOptions>,
 		opts: PostOptions,
+		requestState?: RequestState,
 	): Promise<T> {
 		const baseHeaders: Record<string, string> = {
 			"Content-Type": "application/json",
@@ -240,6 +251,7 @@ abstract class BaseCloudPaymentsHttpClient {
 				checkReplayWindow();
 				if (opts.replaySafety !== "safe" && opts.idempotencyKey) {
 					replayDeadline ??= performance.now() + IDEMPOTENCY_WINDOW_MS;
+					if (requestState) requestState.replayDeadline = replayDeadline;
 				}
 
 				const res = await this.#fetch(absoluteUrl, {
@@ -270,7 +282,7 @@ abstract class BaseCloudPaymentsHttpClient {
 							"CloudPayments returned invalid JSON",
 							cause,
 						);
-						throw this.#ambiguousOutcomeError(contractError, absoluteUrl, opts);
+						throw this.#ambiguousOutcomeError(contractError, absoluteUrl, opts, replayDeadline);
 					}
 				}
 
@@ -278,10 +290,14 @@ abstract class BaseCloudPaymentsHttpClient {
 				if (res.status === 401 && this.#authorization) {
 					throw new CloudPaymentsAuthError(res.statusText, text);
 				}
+				const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"));
 				if (res.status === 429) {
-					const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"));
 					const retryErr = new CloudPaymentsRateLimitError(res.statusText, text, retryAfterMs);
-					if (attempt + 1 < retryCfg.maxAttempts) {
+					if (
+						retryCfg.retryableStatuses.includes(429) &&
+						attempt + 1 < retryCfg.maxAttempts &&
+						(retryAfterMs === null || retryAfterMs <= retryCfg.maxDelayMs)
+					) {
 						await waitBeforeRetry(
 							retryErr,
 							retryAfterMs ?? computeBackoffMs(attempt, retryCfg.baseDelayMs, retryCfg.maxDelayMs),
@@ -290,18 +306,31 @@ abstract class BaseCloudPaymentsHttpClient {
 					}
 					throw retryErr;
 				}
-				const httpErr = new CloudPaymentsHttpError(res.status, res.statusText, text);
+				const httpErr = new CloudPaymentsHttpError(res.status, res.statusText, text, retryAfterMs);
 				if (res.status >= 500) {
-					const outcomeError = this.#ambiguousOutcomeError(httpErr, absoluteUrl, opts);
+					const outcomeError = this.#ambiguousOutcomeError(
+						httpErr,
+						absoluteUrl,
+						opts,
+						replayDeadline,
+					);
 					if (outcomeError !== httpErr) throw outcomeError;
 				}
 				if (retryCfg.retryableStatuses.includes(res.status)) {
-					const outcomeError = this.#ambiguousOutcomeError(httpErr, absoluteUrl, opts);
+					const outcomeError = this.#ambiguousOutcomeError(
+						httpErr,
+						absoluteUrl,
+						opts,
+						replayDeadline,
+					);
 					if (outcomeError !== httpErr) throw outcomeError;
-					if (attempt + 1 < retryCfg.maxAttempts) {
+					if (
+						attempt + 1 < retryCfg.maxAttempts &&
+						(retryAfterMs === null || retryAfterMs <= retryCfg.maxDelayMs)
+					) {
 						await waitBeforeRetry(
 							httpErr,
-							computeBackoffMs(attempt, retryCfg.baseDelayMs, retryCfg.maxDelayMs),
+							retryAfterMs ?? computeBackoffMs(attempt, retryCfg.baseDelayMs, retryCfg.maxDelayMs),
 						);
 						continue;
 					}
@@ -318,7 +347,13 @@ abstract class BaseCloudPaymentsHttpClient {
 					throw abortReason;
 				}
 				if (timedOut || isAbortError(err)) {
-					const netErr = this.#networkError("Request timeout", err, absoluteUrl, opts);
+					const netErr = this.#networkError(
+						"Request timeout",
+						err,
+						absoluteUrl,
+						opts,
+						replayDeadline,
+					);
 					await this.#invokeHook("onError", () =>
 						this.#hooks.onError?.({ request: reqCtx, error: netErr, durationMs }),
 					);
@@ -342,7 +377,7 @@ abstract class BaseCloudPaymentsHttpClient {
 					throw err;
 				}
 				// fetch throw (network, DNS, …)
-				const netErr = this.#networkError("Network error", err, absoluteUrl, opts);
+				const netErr = this.#networkError("Network error", err, absoluteUrl, opts, replayDeadline);
 				await this.#invokeHook("onError", () =>
 					this.#hooks.onError?.({ request: reqCtx, error: netErr, durationMs }),
 				);
@@ -376,8 +411,9 @@ abstract class BaseCloudPaymentsHttpClient {
 		cause: unknown,
 		endpoint: string,
 		opts: PostOptions,
+		replayDeadline?: number,
 	): CloudPaymentsNetworkError | CloudPaymentsUnknownOutcomeError {
-		if (this.#isUnprotectedMutation(opts))
+		if (this.#isUnprotectedMutation(opts, replayDeadline))
 			return new CloudPaymentsUnknownOutcomeError(endpoint, cause);
 		return new CloudPaymentsNetworkError(message, cause);
 	}
@@ -386,14 +422,19 @@ abstract class BaseCloudPaymentsHttpClient {
 		error: T,
 		endpoint: string,
 		opts: PostOptions,
+		replayDeadline?: number,
 	): T | CloudPaymentsUnknownOutcomeError {
-		return this.#isUnprotectedMutation(opts)
+		return this.#isUnprotectedMutation(opts, replayDeadline)
 			? new CloudPaymentsUnknownOutcomeError(endpoint, error)
 			: error;
 	}
 
-	#isUnprotectedMutation(opts: PostOptions): boolean {
-		return opts.replaySafety !== "safe" && !opts.idempotencyKey;
+	#isUnprotectedMutation(opts: PostOptions, replayDeadline?: number): boolean {
+		return (
+			opts.replaySafety !== "safe" &&
+			(!opts.idempotencyKey ||
+				(replayDeadline !== undefined && performance.now() >= replayDeadline))
+		);
 	}
 
 	async #invokeHook(

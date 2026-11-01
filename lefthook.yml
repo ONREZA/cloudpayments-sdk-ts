@@ -6,9 +6,8 @@ commit-msg:
 pre-commit:
   parallel: false
   commands:
-    biome:
-      run: bun run lint
-      glob: "**/*.{ts,tsx,js,json,jsonc}"
+    checks:
+      run: bun run format:check && bun run lint
 
 pre-push:
   parallel: false

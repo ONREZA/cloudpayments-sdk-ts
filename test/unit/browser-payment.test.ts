@@ -82,12 +82,12 @@ describe("waitForWidgetResult", () => {
 	test("accepts a PromiseLike and captures a throwing then accessor", async () => {
 		const result: WidgetResult = { type: "payment", status: "success" };
 		const promise = Promise.resolve(result);
-		// biome-ignore lint/suspicious/noThenProperty: Exercise the public PromiseLike contract.
+		// eslint-disable-next-line unicorn/no-thenable -- Exercise the public PromiseLike contract.
 		const promiseLike: PromiseLike<WidgetResult> = { then: promise.then.bind(promise) };
 		expect(await waitForWidgetResult(promiseLike)).toEqual({ status: "reported", result });
 		const error = new Error("invalid provider thenable");
 		const throwing: PromiseLike<WidgetResult> = {
-			// biome-ignore lint/suspicious/noThenProperty: Exercise promise assimilation failures.
+			// eslint-disable-next-line unicorn/no-thenable -- Exercise a foreign thenable, including a throwing getter.
 			get then(): PromiseLike<WidgetResult>["then"] {
 				throw error;
 			},

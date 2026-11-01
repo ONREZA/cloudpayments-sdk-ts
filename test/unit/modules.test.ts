@@ -447,12 +447,12 @@ describe("generated API surface", () => {
 			retry: { maxAttempts: 1 },
 			fetch: (async (url: string | URL | Request) => {
 				urls.push(url.toString());
-				return mockFetchReturning({
+				return Response.json({
 					Success: true,
 					Model: url.toString().includes("/payments/find")
 						? { TransactionId: 42, Status: "Completed" }
 						: [],
-				})(url);
+				});
 			}) as typeof fetch,
 		});
 

@@ -14,5 +14,5 @@ export const CP_BASE_URL_KZ = "https://api.cp.kz" as const;
 export const CP_DOCS_URL = "https://developers.cloudpayments.ru" as const;
 export const CLOUDKASSIR_DOCS_URL = "https://developers.cloudkassir.ru" as const;
 
-export const CP_SDK_DOCS_SHA256 = "6711d8e779206fcab5a59d55122e549ff4e4264e549d91c5393a637f402f0fb0" as const;
-export const CLOUDKASSIR_SDK_DOCS_SHA256 = "4ab17e3d7b0c376bb733141276f9210b4e0248d228273181d07b3627d1d3c43a" as const;
+export const CP_SDK_DOCS_SHA256 = "4cf1d675db8eb7b970a85b68063f37723d492895d03e9ca9624ace61adf285c2" as const;
+export const CLOUDKASSIR_SDK_DOCS_SHA256 = "805ff1cae528db59fab180ed013d5bc568042619194bda08fe6ebd2eb7938f8b" as const;

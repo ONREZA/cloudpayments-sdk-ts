@@ -49,12 +49,13 @@ export class WebhookListener {
 
 	constructor(private readonly opts: WebhookListenerOptions) {}
 
-	start(): void {
+	start(): URL {
 		this.#server = Bun.serve({
 			port: this.opts.port,
 			hostname: "0.0.0.0",
 			fetch: (req) => this.#handle(req),
 		});
+		return this.#server.url;
 	}
 
 	close(): void {
@@ -137,7 +138,7 @@ export class WebhookListener {
 		}
 
 		if (failureStatus !== undefined) {
-			return new Response(verificationError, { status: failureStatus });
+			return new Response("Webhook verification failed", { status: failureStatus });
 		}
 		return Response.json({ code: 0 });
 	}

@@ -1,4 +1,5 @@
 import type { PostOptions, RequestReplaySafety } from "../core/http.js";
+import { trackRequestState } from "../core/request-state.js";
 import {
 	CloudPayments3DsRequiredError,
 	CloudPaymentsBusinessError,
@@ -35,10 +36,12 @@ export abstract class BaseModule {
 		behavior: ExecBehavior<TRes> = {},
 	): Promise<TRes> {
 		opts = { ...opts };
-		const env = await this.http.post<ApiEnvelope<TRes>>(url, body, {
+		const requestOptions: PostOptions = {
 			...opts,
 			replaySafety: behavior.replaySafety ?? "requires-idempotency",
-		});
+		};
+		const state = trackRequestState(requestOptions);
+		const env = await this.http.post<ApiEnvelope<TRes>>(url, body, requestOptions);
 		try {
 			const model = this.unwrap(
 				env,
@@ -49,7 +52,13 @@ export abstract class BaseModule {
 			return model;
 		} catch (error) {
 			if (error instanceof CloudPaymentsSdkError) {
-				this.throwContractError(error, url, opts, behavior.replaySafety ?? "requires-idempotency");
+				this.throwContractError(
+					error,
+					url,
+					opts,
+					requestOptions.replaySafety,
+					state.replayDeadline,
+				);
 			}
 			throw error;
 		}
@@ -104,8 +113,13 @@ export abstract class BaseModule {
 		endpoint: string,
 		opts: ExecOptions,
 		replaySafety: RequestReplaySafety = "requires-idempotency",
+		replayDeadline?: number,
 	): never {
-		if (replaySafety !== "safe" && !opts.idempotencyKey) {
+		if (
+			replaySafety !== "safe" &&
+			(!opts.idempotencyKey ||
+				(replayDeadline !== undefined && performance.now() >= replayDeadline))
+		) {
 			throw new CloudPaymentsUnknownOutcomeError(endpoint, error);
 		}
 		throw error;
