@@ -15,35 +15,30 @@
  * Дополнительно пишет `.sync-report.md` со сводкой изменений (добавлено/убрано
  * endpoints, изменения в справочниках) — используется CI как PR body.
  */
-import { execSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { DOCS_SOURCES, type DocsSource } from "./docs-sources.js";
-import type { IR } from "./parse.js";
+import { directorySnapshot, sameSnapshot, withRollback } from "./artifacts.js";
+import { DOCS_SOURCES, type DocsSource, type DocsSourceName } from "./docs-sources.js";
+import { type IR, parseHtml, saveIR } from "./parse.js";
+import { fetchDocs, saveRaw } from "./scrape.js";
 
 const ROOT = resolve(import.meta.dir, "..");
 const REPORT_PATH = resolve(ROOT, ".sync-report.md");
+const GENERATED_PATH = resolve(ROOT, "src/_generated");
 
-async function run(script: string, args: string[] = []): Promise<void> {
-	return new Promise((resolvePromise, reject) => {
-		const child = spawn("bun", [script, ...args], { cwd: ROOT, stdio: "inherit" });
-		child.on("exit", (code) => {
-			if (code === 0) resolvePromise();
-			else reject(new Error(`${script} exited with ${code}`));
-		});
-	});
-}
-
-function gitStatusPaths(paths: string[]): string {
-	try {
-		return execSync(`git status --porcelain -- ${paths.map((p) => JSON.stringify(p)).join(" ")}`, {
+async function generate(): Promise<void> {
+	await new Promise<void>((ok, fail) => {
+		const child = spawn(process.execPath, ["tools/gen.ts"], {
 			cwd: ROOT,
-			encoding: "utf8",
+			stdio: "inherit",
 		});
-	} catch {
-		return "";
-	}
+		child.on("error", fail);
+		child.on("close", (code) =>
+			code === 0 ? ok() : fail(new Error(`Generator exited with ${code}`)),
+		);
+	});
 }
 
 interface EndpointSummary {
@@ -59,19 +54,28 @@ function collectEndpoints(ir: IR): EndpointSummary[] {
 		for (const g of s.groups) {
 			if (g.urls.length > 0) {
 				out.push({
-					anchor: g.anchor,
+					anchor: `${s.anchor}/${g.anchor}`,
 					title: `${s.title} → ${g.title}`,
 					urls: g.urls.map((u) => u.url),
-					params: g.params.map(({ name, type, required }) => ({ name, type, required })),
+					params: g.params.map(({ name, type, required }) => ({
+						name,
+						type,
+						required,
+					})),
 				});
 			}
 			for (const sg of g.subgroups) {
 				if (sg.urls.length > 0) {
 					out.push({
-						anchor: sg.anchor,
+						anchor: `${s.anchor}/${g.anchor}/${sg.anchor}`,
 						title: `${s.title} → ${g.title} → ${sg.title}`,
 						urls: sg.urls.map((u) => u.url),
-						params: sg.params.map(({ name, type, required }) => ({ name, type, required })),
+						params: (sg.params.length
+							? sg.params
+							: g.params.length
+								? g.params
+								: (g.subgroups.find((child) => child.params.length)?.params ?? [])
+						).map(({ name, type, required }) => ({ name, type, required })),
 					});
 				}
 			}
@@ -91,13 +95,13 @@ function collectHandbooks(ir: IR): Array<{ anchor: string; title: string; rows: 
 	return out;
 }
 
-async function makeSourceReport(source: DocsSource): Promise<string[]> {
+export async function makeSourceReport(source: DocsSource, unchanged = false): Promise<string[]> {
 	if (!existsSync(source.irPath))
 		return [`## ${source.label} docs sync`, "", "No IR generated.", ""];
 	const ir = (await Bun.file(source.irPath).json()) as IR;
 
-	let prev: IR | null = null;
-	if (existsSync(source.previousIrPath)) {
+	let prev: IR | null = unchanged ? ir : null;
+	if (!unchanged && existsSync(source.previousIrPath)) {
 		prev = (await Bun.file(source.previousIrPath).json()) as IR;
 	}
 
@@ -164,37 +168,70 @@ async function makeSourceReport(source: DocsSource): Promise<string[]> {
 	return lines;
 }
 
-async function makeReport(): Promise<string> {
-	const sections = await Promise.all(Object.values(DOCS_SOURCES).map(makeSourceReport));
+export async function makeReport(unchangedSources = new Set<DocsSourceName>()): Promise<string> {
+	const sections = await Promise.all(
+		Object.values(DOCS_SOURCES).map((source) =>
+			makeSourceReport(source, unchangedSources.has(source.name)),
+		),
+	);
 	return sections.flat().join("\n");
 }
 
-async function main() {
-	for (const source of Object.values(DOCS_SOURCES)) {
-		for (const script of ["tools/scrape.ts", "tools/parse.ts"]) {
-			console.log(`\n━━━ ${script} (${source.label}) ━━━`);
-			await run(script, [source.name]);
+async function main(): Promise<number> {
+	await rm(REPORT_PATH, { force: true });
+	const fetched = await Promise.all(
+		Object.values(DOCS_SOURCES).map(async (source) => {
+			const html = await fetchDocs(source);
+			const ir = parseHtml(html, source.url);
+			const current = existsSync(source.irPath) ? await readFile(source.irPath, "utf8") : null;
+			return {
+				source,
+				html,
+				ir,
+				changed: current !== `${JSON.stringify(ir, null, 2)}\n`,
+			};
+		}),
+	);
+	const generatedBefore = await directorySnapshot(GENERATED_PATH);
+	const paths = [
+		...Object.values(DOCS_SOURCES).flatMap((source) => [
+			source.rawPath,
+			source.previousRawPath,
+			source.irPath,
+			source.previousIrPath,
+		]),
+		GENERATED_PATH,
+	];
+	return withRollback(paths, async () => {
+		try {
+			for (const { source, html, ir } of fetched) {
+				await saveRaw(source, html);
+				await saveIR(source, ir);
+			}
+			await generate();
+			const generatedAfter = await directorySnapshot(GENERATED_PATH);
+			if (!fetched.some((item) => item.changed) && sameSnapshot(generatedBefore, generatedAfter)) {
+				console.log("✓ No changes to docs IR or generated output");
+				return 100;
+			}
+			const unchangedSources = new Set(
+				fetched.filter((item) => !item.changed).map((item) => item.source.name),
+			);
+			await writeFile(REPORT_PATH, await makeReport(unchangedSources));
+			console.log(`✓ Sync complete. Report at ${REPORT_PATH}`);
+			return 0;
+		} catch (error) {
+			await rm(REPORT_PATH, { force: true });
+			throw error;
 		}
-	}
-	console.log("\n━━━ tools/gen.ts ━━━");
-	await run("tools/gen.ts");
-
-	const report = await makeReport();
-	await writeFile(REPORT_PATH, report);
-	console.log(`\n✓ Sync complete. Report at ${REPORT_PATH}`);
-
-	// Выходим с 100 если ни один IR, ни generated output не изменились
-	// относительно индекса git — CI поймёт что ничего публиковать не надо.
-	const changed = gitStatusPaths([
-		...Object.values(DOCS_SOURCES).map((source) => source.irPath),
-		"src/_generated",
-	]).trim();
-	if (!changed) {
-		console.log("→ no changes to docs IR or src/_generated — exit 100");
-		process.exit(100);
-	}
-	console.log("→ changes detected:");
-	console.log(changed);
+	});
 }
 
-await main();
+if (import.meta.main) {
+	try {
+		process.exitCode = await main();
+	} catch (error) {
+		console.error(error);
+		process.exitCode = 1;
+	}
+}

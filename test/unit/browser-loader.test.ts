@@ -123,6 +123,67 @@ describe("CloudPayments browser loaders", () => {
 		expect(fixture.scripts[0]?.removed).toBe(true);
 	});
 
+	test("retries after an adopted official script fails without removing unrelated scripts", async () => {
+		const fixture = fakeDocument((namespace) => {
+			namespace.CloudPayments = function CloudPayments() {} as never;
+		});
+		const adopted = new FakeScript();
+		adopted.src = CLOUDPAYMENTS_WIDGET_SCRIPT_URL;
+		const unrelated = new FakeScript();
+		unrelated.src = "https://example.com/another-script.js";
+		fixture.scripts.push(adopted, unrelated);
+
+		const first = loadCloudPaymentsWidget({ document: fixture.document });
+		adopted.dispatchEvent(new Event("error"));
+		await expect(first).rejects.toMatchObject({ code: "script_load_failed" });
+		const [retried, concurrent] = await Promise.all([
+			loadCloudPaymentsWidget({ document: fixture.document, nonce: "retry-nonce" }),
+			loadCloudPaymentsWidget({ document: fixture.document, nonce: "retry-nonce" }),
+		]);
+
+		expect(retried as CloudPaymentsBrowserNamespace).toBe(fixture.namespace);
+		expect(concurrent).toBe(retried);
+		expect(adopted.removed).toBe(true);
+		expect(unrelated.removed).toBe(false);
+		expect(fixture.scripts).toHaveLength(3);
+		expect(fixture.scripts[2]?.src).toBe(CLOUDPAYMENTS_WIDGET_SCRIPT_URL);
+		expect(fixture.scripts[2]?.nonce).toBe("retry-nonce");
+	});
+
+	test("retries after an adopted script loads without its expected namespace", async () => {
+		const fixture = fakeDocument((namespace) => {
+			namespace.Checkout = function Checkout() {} as never;
+		});
+		const adopted = new FakeScript();
+		adopted.src = CLOUDPAYMENTS_CHECKOUT_SCRIPT_URL;
+		fixture.scripts.push(adopted);
+
+		const first = loadCloudPaymentsCheckout({ document: fixture.document });
+		adopted.dispatchEvent(new Event("load"));
+		await expect(first).rejects.toMatchObject({ code: "namespace_missing" });
+		const retried = await loadCloudPaymentsCheckout({ document: fixture.document });
+		expect(retried as CloudPaymentsBrowserNamespace).toBe(fixture.namespace);
+		expect(adopted.removed).toBe(true);
+		expect(fixture.scripts).toHaveLength(2);
+	});
+
+	test("keeps an adopted script after a timeout so its late load can finish", async () => {
+		const fixture = fakeDocument(() => {});
+		const adopted = new FakeScript();
+		adopted.src = CLOUDPAYMENTS_WIDGET_SCRIPT_URL;
+		fixture.scripts.push(adopted);
+
+		await expect(
+			loadCloudPaymentsWidget({ document: fixture.document, timeoutMs: 0 }),
+		).rejects.toMatchObject({ code: "script_timeout" });
+		expect(adopted.removed).toBe(false);
+		const retry = loadCloudPaymentsWidget({ document: fixture.document });
+		fixture.namespace.CloudPayments = function CloudPayments() {} as never;
+		adopted.dispatchEvent(new Event("load"));
+		expect((await retry) as CloudPaymentsBrowserNamespace).toBe(fixture.namespace);
+		expect(fixture.scripts).toHaveLength(1);
+	});
+
 	test("forgets a settled load instead of returning a stale namespace", async () => {
 		let installs = 0;
 		const fixture = fakeDocument((namespace) => {

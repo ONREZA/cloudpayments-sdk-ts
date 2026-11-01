@@ -277,6 +277,9 @@
                     <a href="#ustanovka-vidzheta" class="toc-h2 toc-link" data-title="Установка виджета">Установка виджета</a>
                   </li>
                   <li>
+                    <a href="#rasshirennyy-nabor-poley-vidzheta" class="toc-h2 toc-link" data-title="Расширенный набор полей виджета">Расширенный набор полей виджета</a>
+                  </li>
+                  <li>
                     <a href="#parametry" class="toc-h2 toc-link" data-title="Параметры">Параметры</a>
                   </li>
                   <li>
@@ -327,13 +330,13 @@
                     <a href="#parametry-initsializatsii" class="toc-h2 toc-link" data-title="Параметры инициализации">Параметры инициализации</a>
                   </li>
                   <li>
+                    <a href="#obnovlenie-platezhnogo-konstruktora" class="toc-h2 toc-link" data-title="Обновление платежного конструктора">Обновление платежного конструктора</a>
+                  </li>
+                  <li>
                     <a href="#kastomizatsiya-platezhnogo-konstruktora" class="toc-h2 toc-link" data-title="Кастомизация платежного конструктора">Кастомизация платежного конструктора</a>
                   </li>
                   <li>
                     <a href="#parametry-kastomizatsii" class="toc-h2 toc-link" data-title="Параметры кастомизации">Параметры кастомизации</a>
-                  </li>
-                  <li>
-                    <a href="#obnovlenie-platezhnogo-konstruktora" class="toc-h2 toc-link" data-title="Обновление платежного конструктора">Обновление платежного конструктора</a>
                   </li>
               </ul>
           </li>
@@ -536,9 +539,6 @@
                   <li>
                     <a href="#poluchenie-ssylki-dlya-oplaty" class="toc-h2 toc-link" data-title="Получение ссылки для оплаты">Получение ссылки для оплаты</a>
                   </li>
-                  <li>
-                    <a href="#poluchenie-qr-koda-dlya-oplaty" class="toc-h2 toc-link" data-title="Получение QR-кода для оплаты">Получение QR-кода для оплаты</a>
-                  </li>
               </ul>
           </li>
           <li>
@@ -592,9 +592,6 @@
               <ul class="toc-list-h2">
                   <li>
                     <a href="#sberpay-poluchenie-ssylki-dlya-oplaty" class="toc-h2 toc-link" data-title="Получение ссылки для оплаты">Получение ссылки для оплаты</a>
-                  </li>
-                  <li>
-                    <a href="#sberpay-poluchenie-qr-koda-dlya-oplaty" class="toc-h2 toc-link" data-title="Получение QR-кода для оплаты">Получение QR-кода для оплаты</a>
                   </li>
               </ul>
           </li>
@@ -752,8 +749,8 @@
             <li><a href='https://widget.cloudpayments.ru/app/demo'>Демо платежного конструктора</a></li>
             <li><a href='https://developers.cloudkassir.ru/'>CloudKassir для разработчиков</a></li>
             <li><a href='https://merchant.cloudpayments.ru/'>Личный Кабинет</a></li>
-            <li><a href='https://cloudpayments.ru/integration/cms/'>Модули для CMS</a></li>
-            <li><a href='https://cloudpayments.ru/integration/sdk/'>Библиотеки и SDK</a></li>
+            <li><a href='https://cloudpayments.ru/payments/cms-crm/'>Модули для CMS</a></li>
+            <li><a href='https://cloudpayments.ru/payments/mobile-payments/'>Библиотеки и SDK</a></li>
             <li><a href='https://gitpub.cloudpayments.ru/integrations/'>Github</a></li>
         </ul>
     </div>
@@ -855,6 +852,32 @@
 <p>Пример реализации запуска виджета без библиотеки jquery:</p>
 <div class="highlight"><pre class="highlight javascript"><code><span class="nb">document</span><span class="p">.</span><span class="nx">querySelector</span><span class="p">(</span><span class="dl">'</span><span class="s1">#checkout</span><span class="dl">'</span><span class="p">).</span><span class="nx">onclick</span> <span class="o">=</span> <span class="nx">start</span>
 </code></pre></div><div class="highlight"><pre class="highlight javascript"><code>
+<span class="kd">const</span> <span class="nx">widget</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">cp</span><span class="p">.</span><span class="nx">CloudPayments</span><span class="p">();</span>
+
+<span class="kd">const</span> <span class="nx">launchWidget</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">intentParams</span> <span class="o">=</span> <span class="p">{</span>
+<span class="dl">"</span><span class="s2">publicTerminalId</span><span class="dl">"</span><span class="p">:</span> <span class="dl">"</span><span class="s2">test_api_00000000000000000000002</span><span class="dl">"</span><span class="p">,</span>
+<span class="dl">"</span><span class="s2">paymentSchema</span><span class="dl">"</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Single</span><span class="dl">"</span><span class="p">,</span>
+<span class="dl">"</span><span class="s2">description</span><span class="dl">"</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Тестовая оплата</span><span class="dl">"</span><span class="p">,</span>
+<span class="dl">"</span><span class="s2">amount</span><span class="dl">"</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
+<span class="dl">"</span><span class="s2">currency</span><span class="dl">"</span><span class="p">:</span> <span class="dl">"</span><span class="s2">RUB</span><span class="dl">"</span>
+  <span class="p">};</span>
+
+  <span class="nx">widget</span><span class="p">.</span><span class="nx">oncomplete</span> <span class="o">=</span> <span class="p">(</span><span class="nx">result</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">result</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="nx">widget</span><span class="p">.</span><span class="nx">start</span><span class="p">(</span><span class="nx">intentParams</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">widgetResult</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">result</span><span class="dl">'</span><span class="p">,</span> <span class="nx">widgetResult</span><span class="p">);</span>
+  <span class="p">}).</span><span class="k">catch</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">error</span><span class="dl">'</span><span class="p">,</span> <span class="nx">error</span><span class="p">);</span>
+  <span class="p">});</span>
+<span class="p">}</span>
+<span class="nx">launchWidget</span><span class="p">()</span>
+
+</code></pre></div>
+<p>Для тестирования можно использовать как <a href="#testirovanie">тестовые карточные данные</a>, так и реальные. Списания денежных средств не произойдет.</p>
+<h2 id='rasshirennyy-nabor-poley-vidzheta'>Расширенный набор полей виджета</h2><div class="highlight"><pre class="highlight javascript"><code>
 <span class="kd">const</span> <span class="nx">btn</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="dl">"</span><span class="s2">payButton</span><span class="dl">"</span><span class="p">)</span>
 
 <span class="kd">const</span> <span class="nx">widget</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">cp</span><span class="p">.</span><span class="nx">CloudPayments</span><span class="p">();</span>
@@ -874,145 +897,183 @@
     <span class="na">restrictedPaymentMethods</span><span class="p">:</span> <span class="p">[</span> <span class="c1">// список отключенных для данной оплаты методов</span>
         <span class="dl">'</span><span class="s1">Sbp</span><span class="dl">'</span>
     <span class="p">],</span>
-    <span class="na">userInfo</span><span class="p">:</span> <span class="p">{</span>
-        <span class="na">accountId</span><span class="p">:</span> <span class="dl">"</span><span class="s2">your_system_user_id</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">firstName</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Test</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">lastName</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Test</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">middleName</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Test</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">fullName</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Test Test Test</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">birth</span><span class="p">:</span> <span class="dl">"</span><span class="s2">2000-30-03</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">address</span><span class="p">:</span> <span class="dl">"</span><span class="s2">д. 7</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">street</span><span class="p">:</span> <span class="dl">"</span><span class="s2">ул. Тестовая</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">city</span><span class="p">:</span> <span class="dl">"</span><span class="s2">г. Москва</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">country</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Россия</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">phone</span><span class="p">:</span> <span class="dl">"</span><span class="s2">+71234567890</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">postCode</span><span class="p">:</span> <span class="dl">"</span><span class="s2">119518</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">email</span><span class="p">:</span> <span class="dl">"</span><span class="s2">user@email.com</span><span class="dl">"</span><span class="p">,</span>
-        <span class="na">customField</span><span class="p">:</span> <span class="p">{</span>
-          <span class="na">name</span><span class="p">:</span> <span class="dl">"</span><span class="s2">your_field_name</span><span class="dl">"</span><span class="p">,</span>
-          <span class="na">value</span><span class="p">:</span> <span class="dl">"</span><span class="s2">your_field_value</span><span class="dl">"</span>
-        <span class="p">}</span>
-    <span class="p">},</span>
-    <span class="na">payerServiceFee</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="c1">// комиссия, оплачиваемая пользователем</span>
-    <span class="na">recurrent</span><span class="p">:</span> <span class="p">{</span>
-        <span class="na">period</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="c1">// частота списания</span>
-        <span class="na">interval</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Day</span><span class="dl">'</span><span class="p">,</span> <span class="c1">// интервал списания</span>
-        <span class="na">amount</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span> <span class="c1">// сумма</span>
-        <span class="na">startDate</span><span class="p">:</span> <span class="dl">"</span><span class="s2">2030-04-15T00:00:00.0000000Z</span><span class="dl">"</span><span class="p">,</span> <span class="c1">// дата начала</span>
-        <span class="na">maxPeriods</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="c1">// количество списаний после которых рекуррент будет остановлен</span>
-        <span class="na">receipt</span><span class="p">:</span> <span class="p">{</span> <span class="c1">// чек для рекуррента</span>
-            <span class="na">items</span><span class="p">:</span> <span class="p">[</span> <span class="c1">//товарные позиции</span>
-                <span class="p">{</span>
-                    <span class="na">label</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Наименование товара 3</span><span class="dl">'</span><span class="p">,</span> <span class="c1">//наименование товара</span>
-                    <span class="na">price</span><span class="p">:</span> <span class="mf">300.00</span><span class="p">,</span> <span class="c1">//цена</span>
-                    <span class="na">quantity</span><span class="p">:</span> <span class="mf">3.00</span><span class="p">,</span> <span class="c1">//количество</span>
-                    <span class="na">amount</span><span class="p">:</span> <span class="mf">900.00</span><span class="p">,</span> <span class="c1">//сумма</span>
-                    <span class="na">vat</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="c1">//ставка НДС</span>
-                    <span class="na">method</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">// тег-1214 признак способа расчета - признак способа расчета</span>
-                    <span class="na">object</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">// тег-1212 признак предмета расчета - признак предмета товара, работы, услуги, платежа, выплаты, иного предмета расчета</span>
-                <span class="p">}</span>
-            <span class="p">],</span>
-            <span class="na">taxationSystem</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">//система налогообложения; необязательный, если у вас одна система налогообложения</span>
-            <span class="na">email</span><span class="p">:</span> <span class="dl">'</span><span class="s1">user@example.com</span><span class="dl">'</span><span class="p">,</span> <span class="c1">//e-mail покупателя, если нужно отправить письмо с чеком</span>
-            <span class="na">phone</span><span class="p">:</span> <span class="dl">''</span><span class="p">,</span> <span class="c1">//телефон покупателя в любом формате, если нужно отправить сообщение со ссылкой на чек</span>
-            <span class="na">isBso</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span> <span class="c1">//чек является бланком строгой отчетности</span>
-            <span class="na">amounts</span><span class="p">:</span> <span class="p">{</span>
-                <span class="na">electronic</span><span class="p">:</span> <span class="mf">900.00</span><span class="p">,</span> <span class="c1">// Сумма оплаты электронными деньгами</span>
-                <span class="na">advancePayment</span><span class="p">:</span> <span class="mf">0.00</span><span class="p">,</span> <span class="c1">// Сумма из предоплаты (зачетом аванса) (2 знака после точки)</span>
-                <span class="na">credit</span><span class="p">:</span> <span class="mf">0.00</span><span class="p">,</span> <span class="c1">// Сумма постоплатой(в кредит) (2 знака после точки)</span>
-                <span class="na">provision</span><span class="p">:</span> <span class="mf">0.00</span> <span class="c1">// Сумма оплаты встречным предоставлением (сертификаты, др. мат.ценности) (2 знака после точки)</span>
-            <span class="p">}</span>
-        <span class="p">}</span>
-    <span class="p">},</span>
-    <span class="na">items</span><span class="p">:</span> <span class="p">[{</span>
-            <span class="na">id</span><span class="p">:</span> <span class="dl">"</span><span class="s2">your_system_item_unique_identifier_1</span><span class="dl">"</span><span class="p">,</span> <span class="c1">// уникальный идентификатор товара в вашей системе (или для данной оплаты)</span>
-            <span class="na">name</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Basket</span><span class="dl">"</span><span class="p">,</span> <span class="c1">// наименование товара</span>
-            <span class="na">count</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="c1">// количество</span>
-            <span class="na">price</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="c1">// стоимость</span>
-            <span class="c1">// label?: string | null;</span>
-            <span class="c1">// quantity?: number | null;</span>
+
+   <span class="na">appearance</span><span class="p">:</span> <span class="p">{</span>
+        <span class="na">colors</span><span class="p">:</span> <span class="p">{</span>
+          <span class="na">primaryButtonColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#1dfa05</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">primaryHoverButtonColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">primaryButtonTextColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">primaryButtonHoverTextColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">activeInputColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">inputBackground</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">inputColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#1dfa05</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">inputBorderColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#f20505</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">titleColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">textColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#1dfa05</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">errorColor</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#ee05fa</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">skeletonBackground</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#ee05fa</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">background</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#ffffff</span><span class="dl">"</span>
         <span class="p">},</span>
-        <span class="p">{</span>
-            <span class="na">id</span><span class="p">:</span> <span class="dl">"</span><span class="s2">your_system_item_unique_identifier_2</span><span class="dl">"</span><span class="p">,</span>
-            <span class="na">name</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Orange</span><span class="dl">"</span><span class="p">,</span>
-            <span class="na">count</span><span class="p">:</span> <span class="mf">9.0</span><span class="p">,</span>
-            <span class="na">price</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
-        <span class="p">}</span>
-    <span class="p">],</span>
-    <span class="na">receipt</span><span class="p">:</span> <span class="p">{</span>
-        <span class="na">items</span><span class="p">:</span> <span class="p">[</span> <span class="c1">//товарные позиции</span>
-            <span class="p">{</span>
-                <span class="na">label</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Наименование товара 1</span><span class="dl">"</span><span class="p">,</span> <span class="c1">//наименование товара</span>
-                <span class="na">price</span><span class="p">:</span> <span class="mf">100.00</span><span class="p">,</span> <span class="c1">//цена</span>
-                <span class="na">quantity</span><span class="p">:</span> <span class="mf">1.00</span><span class="p">,</span> <span class="c1">//количество</span>
-                <span class="na">amount</span><span class="p">:</span> <span class="mf">100.00</span><span class="p">,</span> <span class="c1">//сумма</span>
-                <span class="na">vat</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">//ставка НДС</span>
-                <span class="na">method</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">// тег-1214 признак способа расчета - признак способа расчета</span>
-                <span class="na">object</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">// тег-1212 признак предмета расчета - признак предмета товара, работы, услуги, платежа, выплаты, иного предмета расчета</span>
-                <span class="na">measurementUnit</span><span class="p">:</span> <span class="dl">"</span><span class="s2">шт</span><span class="dl">"</span> <span class="c1">//единица измерения</span>
-            <span class="p">},</span> <span class="p">{</span>
-                <span class="na">label</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Наименование товара 2</span><span class="dl">"</span><span class="p">,</span> <span class="c1">//наименование товара</span>
-                <span class="na">price</span><span class="p">:</span> <span class="mf">200.00</span><span class="p">,</span> <span class="c1">//цена</span>
-                <span class="na">quantity</span><span class="p">:</span> <span class="mf">2.00</span><span class="p">,</span> <span class="c1">//количество</span>
-                <span class="na">amount</span><span class="p">:</span> <span class="mf">300.00</span><span class="p">,</span> <span class="c1">//сумма со скидкой 25%</span>
-                <span class="na">vat</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="c1">//ставка НДС</span>
-                <span class="na">method</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">// тег-1214 признак способа расчета - признак способа расчета</span>
-                <span class="na">object</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">// тег-1212 признак предмета расчета - признак предмета товара, работы, услуги, платежа, выплаты, иного предмета расчета</span>
-                <span class="na">measurementUnit</span><span class="p">:</span> <span class="dl">"</span><span class="s2">шт</span><span class="dl">"</span><span class="p">,</span> <span class="c1">//единица измерения</span>
-                <span class="na">excise</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span> <span class="c1">// тег-1229 сумма акциза</span>
-                <span class="na">countryOriginCode</span><span class="p">:</span> <span class="dl">"</span><span class="s2">156</span><span class="dl">"</span><span class="p">,</span> <span class="c1">// тег-1230 цифровой код страны происхождения товара в соответствии с Общероссийским классификатором стран мира 3 симв. </span>
-                <span class="na">customsDeclarationNumber</span><span class="p">:</span> <span class="dl">"</span><span class="s2">54180656/1345865/3435625/23</span><span class="dl">"</span><span class="p">,</span> <span class="c1">// тег-1231 регистрационный номер таможенной декларации 32 симв. </span>
-                <span class="na">ProductCodeData</span><span class="p">:</span> <span class="c1">//данные маркировки товара</span>
-                <span class="p">{</span>
-                    <span class="na">CodeProductNomenclature</span><span class="p">:</span> <span class="dl">"</span><span class="s2">3031303239303030303033343....a78495a4f6672754744773d3d</span><span class="dl">"</span> <span class="c1">//HEX представление штрих/бар кода маркировки целиком (Только для касс Микропэй)</span>
-                <span class="p">}</span>
-            <span class="p">},</span> <span class="p">{</span>
-                <span class="na">label</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Наименование товара 3</span><span class="dl">"</span><span class="p">,</span> <span class="c1">//наименование товара</span>
-                <span class="na">price</span><span class="p">:</span> <span class="mf">300.00</span><span class="p">,</span> <span class="c1">//цена</span>
-                <span class="na">quantity</span><span class="p">:</span> <span class="mf">3.00</span><span class="p">,</span> <span class="c1">//количество</span>
-                <span class="na">amount</span><span class="p">:</span> <span class="mf">900.00</span><span class="p">,</span> <span class="c1">//сумма</span>
-                <span class="na">vat</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="c1">//ставка НДС</span>
-                <span class="na">method</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">// тег-1214 признак способа расчета - признак способа расчета</span>
-                <span class="na">object</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">// тег-1212 признак предмета расчета - признак предмета товара, работы, услуги, платежа, выплаты, иного предмета расчета</span>
-                <span class="na">measurementUnit</span><span class="p">:</span> <span class="dl">"</span><span class="s2">шт</span><span class="dl">"</span><span class="p">,</span> <span class="c1">//единица измерения</span>
-                <span class="na">AgentSign</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="c1">//признак агента, тег ОФД 1057, 1222</span>
-                <span class="na">AgentData</span><span class="p">:</span> <span class="p">{</span> <span class="c1">//данные агента, тег офд 1223</span>
-                    <span class="na">AgentOperationName</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span> <span class="c1">// наименование операции банковского платежного агента или банковского платежного субагента, тег ОФД 1044</span>
-                    <span class="na">PaymentAgentPhone</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span> <span class="c1">// телефон платежного агента, тег ОФД 1073</span>
-                    <span class="na">PaymentReceiverOperatorPhone</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span> <span class="c1">// телефон оператора по приему платежей, тег ОФД 1074</span>
-                    <span class="na">TransferOperatorPhone</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span> <span class="c1">// телефон оператора перевода, тег ОФД 1075</span>
-                    <span class="na">TransferOperatorName</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span> <span class="c1">// наименование оператора перевода, тег ОФД 1026</span>
-                    <span class="na">TransferOperatorAddress</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span> <span class="c1">// адрес оператора перевода, тег ОФД 1005</span>
-                    <span class="na">TransferOperatorInn</span><span class="p">:</span> <span class="kc">null</span> <span class="c1">// ИНН оператора перевода, тег ОФД 1016</span>
-                <span class="p">},</span>
-                <span class="na">PurveyorData</span><span class="p">:</span> <span class="p">{</span> <span class="c1">//данные поставщика платежного агента,  тег ОФД 1224</span>
-                    <span class="na">Phone</span><span class="p">:</span> <span class="dl">"</span><span class="s2">+71234567890</span><span class="dl">"</span><span class="p">,</span> <span class="c1">// телефон поставщика, тег ОД 1171</span>
-                    <span class="na">Name</span><span class="p">:</span> <span class="dl">"</span><span class="s2">ООО Ромашка</span><span class="dl">"</span><span class="p">,</span> <span class="c1">// наименование поставщика, тег ОФД 1225</span>
-                    <span class="na">Inn</span><span class="p">:</span> <span class="dl">"</span><span class="s2">1234567890</span><span class="dl">"</span> <span class="c1">// ИНН поставщика, тег ОФД 1226</span>
-                <span class="p">}</span>
-            <span class="p">}</span>
-        <span class="p">],</span>
-        <span class="na">calculationPlace</span><span class="p">:</span> <span class="dl">"</span><span class="s2">www.my.ru</span><span class="dl">"</span><span class="p">,</span> <span class="c1">//место осуществления расчёта, по умолчанию берется значение из кассы</span>
-        <span class="na">taxationSystem</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">//система налогообложения; необязательный, если у вас одна система налогообложения</span>
-        <span class="na">email</span><span class="p">:</span> <span class="dl">"</span><span class="s2">user@example.com</span><span class="dl">"</span><span class="p">,</span> <span class="c1">//e-mail покупателя, если нужно отправить письмо с чеком</span>
-        <span class="na">phone</span><span class="p">:</span> <span class="dl">""</span><span class="p">,</span> <span class="c1">//телефон покупателя в любом формате, если нужно отправить сообщение со ссылкой на чек</span>
-        <span class="na">customerInfo</span><span class="p">:</span> <span class="dl">""</span><span class="p">,</span> <span class="c1">// тег-1227 Покупатель - наименование организации или фамилия, имя, отчество (при наличии), серия и номер паспорта покупателя (клиента)</span>
-        <span class="na">customerInn</span><span class="p">:</span> <span class="dl">"</span><span class="s2">7708806063</span><span class="dl">"</span><span class="p">,</span> <span class="c1">// тег-1228 ИНН покупателя </span>
-        <span class="na">isBso</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span> <span class="c1">//чек является бланком строгой отчётности</span>
-        <span class="na">AgentSign</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span> <span class="c1">//признак агента, тег ОФД 1057</span>
-        <span class="na">amounts</span><span class="p">:</span> <span class="p">{</span>
-            <span class="na">electronic</span><span class="p">:</span> <span class="mf">1300.00</span><span class="p">,</span> <span class="c1">// Сумма оплаты электронными деньгами</span>
-            <span class="na">advancePayment</span><span class="p">:</span> <span class="mf">0.00</span><span class="p">,</span> <span class="c1">// Сумма из предоплаты (зачетом аванса) (2 знака после точки)</span>
-            <span class="na">credit</span><span class="p">:</span> <span class="mf">0.00</span><span class="p">,</span> <span class="c1">// Сумма постоплатой(в кредит) (2 знака после точки)</span>
-            <span class="na">provision</span><span class="p">:</span> <span class="mf">0.00</span> <span class="c1">// Сумма оплаты встречным предоставлением (сертификаты, др. мат.ценности) (2 знака после точки)</span>
-        <span class="p">}</span>
-    <span class="p">},</span>
-    <span class="na">metadata</span><span class="p">:</span> <span class="p">{</span>
-        <span class="na">referrerId</span><span class="p">:</span> <span class="dl">"</span><span class="s2">some_referrer_123</span><span class="dl">"</span>
-    <span class="p">},</span>
-    <span class="na">successRedirectUrl</span><span class="p">:</span> <span class="dl">"</span><span class="s2">&lt;https://example.com&gt;</span><span class="dl">"</span><span class="p">,</span>
+        <span class="na">backdrop</span><span class="p">:</span> <span class="p">{</span>
+          <span class="na">blur</span><span class="p">:</span> <span class="dl">"</span><span class="s2">8</span><span class="dl">"</span><span class="p">,</span>
+          <span class="na">opacity</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+          <span class="na">background</span><span class="p">:</span> <span class="dl">"</span><span class="s2">#6b7cd1</span><span class="dl">"</span>
+        <span class="p">},</span>
+        <span class="nx">components</span><span class="dl">"</span><span class="s2">: {
+          paymentForm: {
+          fontSize: </span><span class="dl">"</span><span class="mi">16</span><span class="dl">"</span><span class="s2">,
+          labelFontSize: </span><span class="dl">"</span><span class="mi">16</span><span class="dl">"</span><span class="s2">,
+          activeLabelFontSize: </span><span class="dl">"</span><span class="mi">12</span><span class="dl">"</span><span class="s2">
+    },
+        paymentButton: {
+         fontSize: </span><span class="dl">"</span><span class="mi">16</span><span class="dl">"</span><span class="s2">,
+         text: </span><span class="dl">"</span><span class="nx">Оплатить</span><span class="dl">"</span><span class="s2">,
+
+        borders: {
+          radius: </span><span class="dl">"</span><span class="mi">80</span><span class="nx">px</span><span class="dl">"</span><span class="s2">
+        }
+      },
+
+     userInfo: {
+        accountId: </span><span class="dl">"</span><span class="nx">your_system_user_id</span><span class="dl">"</span><span class="s2">,
+        firstName: </span><span class="dl">"</span><span class="nx">Test</span><span class="dl">"</span><span class="s2">,
+        lastName: </span><span class="dl">"</span><span class="nx">Test</span><span class="dl">"</span><span class="s2">,
+        middleName: </span><span class="dl">"</span><span class="nx">Test</span><span class="dl">"</span><span class="s2">,
+        fullName: </span><span class="dl">"</span><span class="nx">Test</span> <span class="nx">Test</span> <span class="nx">Test</span><span class="dl">"</span><span class="s2">,
+        birth: </span><span class="dl">"</span><span class="mi">2000</span><span class="o">-</span><span class="mi">30</span><span class="o">-</span><span class="mi">03</span><span class="dl">"</span><span class="s2">,
+        address: </span><span class="dl">"</span><span class="nx">д</span><span class="p">.</span> <span class="mi">7</span><span class="dl">"</span><span class="s2">,
+        street: </span><span class="dl">"</span><span class="nx">ул</span><span class="p">.</span> <span class="nx">Тестовая</span><span class="dl">"</span><span class="s2">,
+        city: </span><span class="dl">"</span><span class="nx">г</span><span class="p">.</span> <span class="nx">Москва</span><span class="dl">"</span><span class="s2">,
+        country: </span><span class="dl">"</span><span class="nx">Россия</span><span class="dl">"</span><span class="s2">,
+        phone: </span><span class="dl">"</span><span class="o">+</span><span class="mi">71234567890</span><span class="dl">"</span><span class="s2">,
+        postCode: </span><span class="dl">"</span><span class="mi">119518</span><span class="dl">"</span><span class="s2">,
+        email: </span><span class="dl">"</span><span class="nx">user</span><span class="p">@</span><span class="nd">email</span><span class="p">.</span><span class="nx">com</span><span class="dl">"</span><span class="s2">,
+        customField: {
+          name: </span><span class="dl">"</span><span class="nx">your_field_name</span><span class="dl">"</span><span class="s2">,
+          value: </span><span class="dl">"</span><span class="nx">your_field_value</span><span class="dl">"</span><span class="s2">
+        }
+    },
+    payerServiceFee: 50, // комиссия, оплачиваемая пользователем
+    recurrent: {
+        period: 1, // частота списания
+        interval: 'Day', // интервал списания
+        amount: 500, // сумма
+        startDate: </span><span class="dl">"</span><span class="mi">2030</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">15</span><span class="na">T00</span><span class="p">:</span><span class="mi">00</span><span class="p">:</span><span class="mf">00.0000000</span><span class="nx">Z</span><span class="dl">"</span><span class="s2">, // дата начала
+        maxPeriods: 50, // количество списаний после которых рекуррент будет остановлен
+        receipt: { // чек для рекуррента
+            items: [ //товарные позиции
+                {
+                    label: 'Наименование товара 3', //наименование товара
+                    price: 300.00, //цена
+                    quantity: 3.00, //количество
+                    amount: 900.00, //сумма
+                    vat: 20, //ставка НДС
+                    method: 0, // тег-1214 признак способа расчета - признак способа расчета
+                    object: 0, // тег-1212 признак предмета расчета - признак предмета товара, работы, услуги, платежа, выплаты, иного предмета расчета
+                }
+            ],
+            taxationSystem: 0, //система налогообложения; необязательный, если у вас одна система налогообложения
+            email: 'user@example.com', //e-mail покупателя, если нужно отправить письмо с чеком
+            phone: '', //телефон покупателя в любом формате, если нужно отправить сообщение со ссылкой на чек
+            isBso: false, //чек является бланком строгой отчетности
+            amounts: {
+                electronic: 900.00, // Сумма оплаты электронными деньгами
+                advancePayment: 0.00, // Сумма из предоплаты (зачетом аванса) (2 знака после точки)
+                credit: 0.00, // Сумма постоплатой(в кредит) (2 знака после точки)
+                provision: 0.00 // Сумма оплаты встречным предоставлением (сертификаты, др. мат.ценности) (2 знака после точки)
+            }
+        }
+    },
+
+    items: [{
+            id: </span><span class="dl">"</span><span class="nx">your_system_item_unique_identifier_1</span><span class="dl">"</span><span class="s2">, // уникальный идентификатор товара в вашей системе (или для данной оплаты)
+            name: </span><span class="dl">"</span><span class="nx">Basket</span><span class="dl">"</span><span class="s2">, // наименование товара
+            count: 1, // количество
+            price: 100, // стоимость
+            // label?: string | null;
+            // quantity?: number | null;
+        },
+        {
+            id: </span><span class="dl">"</span><span class="nx">your_system_item_unique_identifier_2</span><span class="dl">"</span><span class="s2">,
+            name: </span><span class="dl">"</span><span class="nx">Orange</span><span class="dl">"</span><span class="s2">,
+            count: 9,
+            price: 100,
+        }
+    ],
+    receipt: {
+        items: [ //товарные позиции
+            {
+                label: </span><span class="dl">"</span><span class="nx">Наименование</span> <span class="nx">товара</span> <span class="mi">1</span><span class="dl">"</span><span class="s2">, //наименование товара
+                price: 100.00, //цена
+                quantity: 1.00, //количество
+                amount: 100.00, //сумма
+                vat: 0, //ставка НДС
+                method: 0, // тег-1214 признак способа расчета - признак способа расчета
+                object: 0, // тег-1212 признак предмета расчета - признак предмета товара, работы, услуги, платежа, выплаты, иного предмета расчета
+                measurementUnit: </span><span class="dl">"</span><span class="nx">шт</span><span class="dl">"</span><span class="s2"> //единица измерения
+            }, {
+                label: </span><span class="dl">"</span><span class="nx">Наименование</span> <span class="nx">товара</span> <span class="mi">2</span><span class="dl">"</span><span class="s2">, //наименование товара
+                price: 200.00, //цена
+                quantity: 2.00, //количество
+                amount: 300.00, //сумма со скидкой 25%
+                vat: 10, //ставка НДС
+                method: 0, // тег-1214 признак способа расчета - признак способа расчета
+                object: 0, // тег-1212 признак предмета расчета - признак предмета товара, работы, услуги, платежа, выплаты, иного предмета расчета
+                measurementUnit: </span><span class="dl">"</span><span class="nx">шт</span><span class="dl">"</span><span class="s2">, //единица измерения
+                excise: 0.01, // тег-1229 сумма акциза
+                countryOriginCode: </span><span class="dl">"</span><span class="mi">156</span><span class="dl">"</span><span class="s2">, // тег-1230 цифровой код страны происхождения товара в соответствии с Общероссийским классификатором стран мира 3 симв.
+                customsDeclarationNumber: </span><span class="dl">"</span><span class="mi">54180656</span><span class="o">/</span><span class="mi">1345865</span><span class="o">/</span><span class="mi">3435625</span><span class="o">/</span><span class="mi">23</span><span class="dl">"</span><span class="s2">, // тег-1231 регистрационный номер таможенной декларации 32 симв.
+                ProductCodeData: //данные маркировки товара
+                {
+                    CodeProductNomenclature: </span><span class="dl">"</span><span class="mi">3031303239303030303033343</span><span class="p">....</span><span class="nx">a78495a4f6672754744773d3d</span><span class="dl">"</span><span class="s2"> //HEX представление штрих/бар кода маркировки целиком (Только для касс Микропэй)
+                }
+            }, {
+                label: </span><span class="dl">"</span><span class="nx">Наименование</span> <span class="nx">товара</span> <span class="mi">3</span><span class="dl">"</span><span class="s2">, //наименование товара
+                price: 300.00, //цена
+                quantity: 3.00, //количество
+                amount: 900.00, //сумма
+                vat: 20, //ставка НДС
+                method: 0, // тег-1214 признак способа расчета - признак способа расчета
+                object: 0, // тег-1212 признак предмета расчета - признак предмета товара, работы, услуги, платежа, выплаты, иного предмета расчета
+                measurementUnit: </span><span class="dl">"</span><span class="nx">шт</span><span class="dl">"</span><span class="s2">, //единица измерения
+                AgentSign: 6, //признак агента, тег ОФД 1057, 1222
+                AgentData: { //данные агента, тег офд 1223
+                    AgentOperationName: null, // наименование операции банковского платежного агента или банковского платежного субагента, тег ОФД 1044
+                    PaymentAgentPhone: null, // телефон платежного агента, тег ОФД 1073
+                    PaymentReceiverOperatorPhone: null, // телефон оператора по приему платежей, тег ОФД 1074
+                    TransferOperatorPhone: null, // телефон оператора перевода, тег ОФД 1075
+                    TransferOperatorName: null, // наименование оператора перевода, тег ОФД 1026
+                    TransferOperatorAddress: null, // адрес оператора перевода, тег ОФД 1005
+                    TransferOperatorInn: null // ИНН оператора перевода, тег ОФД 1016
+                },
+                PurveyorData: { //данные поставщика платежного агента,  тег ОФД 1224
+                    Phone: </span><span class="dl">"</span><span class="o">+</span><span class="mi">71234567890</span><span class="dl">"</span><span class="s2">, // телефон поставщика, тег ОД 1171
+                    Name: </span><span class="dl">"</span><span class="nx">ООО</span> <span class="nx">Ромашка</span><span class="dl">"</span><span class="s2">, // наименование поставщика, тег ОФД 1225
+                    Inn: </span><span class="dl">"</span><span class="mi">1234567890</span><span class="dl">"</span><span class="s2"> // ИНН поставщика, тег ОФД 1226
+                }
+            }
+        ],
+        calculationPlace: </span><span class="dl">"</span><span class="nx">www</span><span class="p">.</span><span class="nx">my</span><span class="p">.</span><span class="nx">ru</span><span class="dl">"</span><span class="s2">, //место осуществления расчёта, по умолчанию берется значение из кассы
+        taxationSystem: 0, //система налогообложения; необязательный, если у вас одна система налогообложения
+        email: </span><span class="dl">"</span><span class="nx">user</span><span class="p">@</span><span class="nd">example</span><span class="p">.</span><span class="nx">com</span><span class="dl">"</span><span class="s2">, //e-mail покупателя, если нужно отправить письмо с чеком
+        phone: </span><span class="dl">""</span><span class="s2">, //телефон покупателя в любом формате, если нужно отправить сообщение со ссылкой на чек
+        customerInfo: </span><span class="dl">""</span><span class="s2">, // тег-1227 Покупатель - наименование организации или фамилия, имя, отчество (при наличии), серия и номер паспорта покупателя (клиента)
+        customerInn: </span><span class="dl">"</span><span class="mi">7708806063</span><span class="dl">"</span><span class="s2">, // тег-1228 ИНН покупателя
+        isBso: false, //чек является бланком строгой отчётности
+        AgentSign: null, //признак агента, тег ОФД 1057
+        amounts: {
+            electronic: 1300.00, // Сумма оплаты электронными деньгами
+            advancePayment: 0.00, // Сумма из предоплаты (зачетом аванса) (2 знака после точки)
+            credit: 0.00, // Сумма постоплатой(в кредит) (2 знака после точки)
+            provision: 0.00 // Сумма оплаты встречным предоставлением (сертификаты, др. мат.ценности) (2 знака после точки)
+        }
+    },
+    metadata: {
+        referrerId: </span><span class="dl">"</span><span class="nx">some_referrer_123</span><span class="dl">"</span><span class="s2">
+    },
+    successRedirectUrl: </span><span class="dl">"</span><span class="o">&lt;</span><span class="na">https</span><span class="p">:</span><span class="c1">//example.com&gt;",</span>
     <span class="na">failRedirectUrl</span><span class="p">:</span> <span class="dl">"</span><span class="s2">&lt;https://failexample.com&gt;</span><span class="dl">"</span><span class="p">,</span>
-    <span class="na">escrow</span><span class="p">:</span> <span class="p">{</span> 
+    <span class="na">escrow</span><span class="p">:</span> <span class="p">{</span>
         <span class="na">startAccumulation</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
         <span class="na">accumulationId</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span>
         <span class="na">escrowType</span><span class="p">:</span> <span class="dl">"</span><span class="s2">OneToN</span><span class="dl">"</span>
@@ -1035,9 +1096,7 @@
 <span class="p">}</span>
 
 <span class="nx">btn</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="dl">'</span><span class="s1">click</span><span class="dl">'</span><span class="p">,</span> <span class="nx">launchWidget</span><span class="p">)</span>
-</code></pre></div>
-<p>Для тестирования можно использовать как <a href="#testirovanie">тестовые карточные данные</a>, так и реальные. Списания денежных средств не произойдет.</p>
-<h2 id='parametry'>Параметры</h2>
+</code></pre></div><h2 id='parametry'>Параметры</h2>
 <aside class="notice">
 По требованию НСПК, для ТСП, предоставляющих телекоммуникационные услуги (MCC 4814 Telecommunication Services), обязательна передача номера телефона плательщика. При отсутствии номера телефона в запросе, банки-эквайеры будут отклонять проводимые операции.
 <br />
@@ -1055,6 +1114,7 @@
 <th>Тип</th>
 <th>Описание</th>
 <th>Обязательность</th>
+<th>Значение по умолчанию</th>
 </tr>
 </thead><tbody>
 <tr>
@@ -1062,131 +1122,167 @@
 <td>string</td>
 <td>Публичный ID терминала</td>
 <td>Обязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>amount</td>
 <td>float</td>
 <td>Cумма платежа. Должно быть &gt; 0<br>Пример: 2; 2.5; 2.57</td>
 <td>Обязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>currency</td>
 <td>string<br>enum</td>
 <td>Валюта платежа (<a href="#spisok-valyut">см. справочник</a>)</td>
 <td>Обязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>culture</td>
 <td>string</td>
 <td>Язык виджета (По умолчанию <code>ru-RU</code>) (<a href="#cultures">см. справочник</a>)</td>
 <td>Необязателен</td>
+<td>ru-RU</td>
 </tr>
 <tr>
 <td>description</td>
 <td>string</td>
 <td>Описание назначения оплаты в произвольном формате</td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>externalId</td>
 <td>string</td>
 <td>Идентификатор заказа в вашей системе.<br>Приходит в <a href="#uvedomleniya">уведомлениях</a><br>(ранее <code>invoiceId</code>)</td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>paymentSchema</td>
 <td>string<br>enum</td>
 <td>Схема обработки транзакций (ранее <code>charge</code>/<code>auth</code>):<br><code>Single</code> — одностадийная оплата.<br><code>Dual</code> — двухстадийная оплата.</td>
 <td>Обязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>receiptEmail</td>
 <td>string</td>
 <td>Email для отправки квитанции и чека.</td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>restrictedPaymentMethods</td>
 <td>string[]<br>enum</td>
 <td>Cписок отключенных для данной оплаты методов<br>Доступные значения: <code>Card</code>, <code>TcsInstallment</code>, <code>Sbp</code>, <code>TinkoffPay</code>, <code>MirPay</code>, <code>Dolyame</code>, <code>ForeignCard</code>, <code>SberPay</code></td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>tokenize</td>
 <td>bool</td>
-<td>Сохранение карты для последующего использования.Приходит в <a href="#uvedomleniya">уведомлениях</a> и позволяет оплачивать по <a href="#oplata-po-tokenu-rekarring">токену</a></td>
+<td>Сохранение карты для последующего использования.Приходит в <a href="#uvedomleniya">уведомлениях</a> и позволяет оплачивать по <a href="#oplata-po-tokenu-rekarring">токену</a> <br>Значение параметра будет учитываться только тогда, когда в настройках сайта установлено значение &quot;Спрашивать пользователя&quot;  <br>Для сохранения карты, необходимо передать &quot;accountId&quot; в &quot;userInfo&quot; <br></td>
 <td>Необязателен</td>
+<td>По умолчанию false. Для корректной работы параметра, необходимо также  выставить настройки в разделе разделе &quot;Сайты&quot; в личном кабинете мерчанта</td>
 </tr>
 <tr>
 <td>recurrent</td>
 <td>object</td>
-<td>Настройки для рекуррентных платежей (<a href="#recurrent-widget">см. справочник</a>)</td>
+<td>Настройки для рекуррентных платежей (<a href="#recurrent-widget">см. справочник</a>) Для создания рекуррентных платежей, необходимо передать &quot;accountId&quot; в &quot;userInfo&quot;</td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>escrow</td>
 <td>object</td>
 <td>Настройки для безопасной сделки (<a href="#escrow-widget">см. справочник</a>)</td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>items</td>
 <td>object[]</td>
 <td>Список товаров (<a href="#spisok-tovarov">см. справочник</a>)</td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>receipt</td>
 <td>object</td>
 <td>Объект чека. Используется при подключении CloudKassir. Для более подробной информации <a href="#format-peredachi-dannyh-dlya-onlayn-cheka">см. cправочник</a></td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>userInfo</td>
 <td>object</td>
 <td>Информация о плательщике (<a href="#dannye-o-platelshchike">см. справочник</a>)</td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>metadata</td>
 <td>object</td>
 <td>Дополнительные метаданные в формате JSON которые будут связаны с транзакцией. (ранее <code>data</code>)<br>Приходит в <a href="#uvedomleniya">уведомлениях</a></td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>successRedirectUrl</td>
 <td>string</td>
-<td>Адрес страницы для редиректа при успешной оплате</td>
+<td>Адрес страницы для редиректа при успешной оплате<br>Если параметр не задан, при нажатии на кнопку &quot;вернуться в магазин&quot; после успешной оплаты, закрывается iframe и пользователь остается на странице, на которой был поднят виджет</td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>failRedirectUrl</td>
 <td>string</td>
-<td>Адрес страницы для редиректа при неуспешной оплате</td>
+<td>Адрес страницы для редиректа при неуспешной оплате<br>Если параметр не задан, при нажатии на кнопку &quot;вернуться в магазин&quot; после неуспешной оплаты, закрывается iframe и пользователь остается на странице, на которой был поднят виджет. Параметр связан с &quot;retryPayment&quot; на виджете отображается ИЛИ кнопка повторной оплаты или кнопка редиректа.</td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>emailBehavior</td>
 <td>string</td>
 <td>Email пользователя:<br><code>Required</code>: Обязателен.<br><code>Hidden</code>: Скрыт.<br><code>Optional</code>: Необязателен.<br>Отображается изначально в отключенном состоянии, клиент может включить для получения квитанции (Значение по умолчанию)</td>
 <td>Необязателен</td>
+<td>Optional</td>
 </tr>
 <tr>
 <td>retryPayment</td>
 <td>bool</td>
 <td>Появление кнопки «Повторить платеж» при неудачном платеже (По умолчанию <code>true</code>)<br>Если передать <code>false</code>, то после неудачной попытки оплаты клиенту сразу будет предложено вернуться на сайт, следующую попытку он сможет совершить только в новой оплате</td>
 <td>Необязателен</td>
+<td>true</td>
 </tr>
 <tr>
 <td>autoClose</td>
 <td>int</td>
-<td>Автоматическое закрытие виджета после успешной оплаты через указанное количество секунд. Значение в промежутке от 3 до 10 включительно</td>
+<td>Автоматическое закрытие виджета после успешной оплаты через указанное количество секунд. Значение в промежутке от 3 до 10 включительно<br>Если параметр не передан, виджет скрывается по действиям пользователя<br></td>
 <td>Необязателен</td>
+<td></td>
 </tr>
 <tr>
 <td>skin</td>
 <td>string[]<br>enum</td>
-<td>Вид виджета<br>Доступные значения:<br><code>classic</code> светлая тема (Значение по умолчанию)<br><code>modern</code>: темная тема</td>
+<td>Вид виджета<br>Доступные значения:<br><code>classic</code> светлая тема (Значение по умолчанию)<br><code>modern</code>: темная тема <br>Логика работы Темы и Кастомизации отдельных элементов виджета работает поверх темы. Если никакая тема не указана, используется по умолчанию светлая<br></td>
+<td>Необязателен</td>
+<td>classic</td>
+</tr>
+<tr>
+<td>components</td>
+<td>object</td>
+<td>Параметры цветовой кастомизации компонентов ( текстов, инпутов)</td>
+<td>Необязателен</td>
+<td></td>
+</tr>
+<tr>
+<td>appearance</td>
+<td>object</td>
+<td>Параметры цветовой кастомизации элементов</td>
+<td>Необязателен</td>
 <td></td>
 </tr>
 </tbody></table>
@@ -1342,7 +1438,7 @@
 <tr>
 <td>phone</td>
 <td>string</td>
-<td>Номер телефона</td>
+<td>Номер телефона. Пример: +7xxxxxxxxxx</td>
 <td>Необязателен</td>
 </tr>
 <tr>
@@ -1505,8 +1601,8 @@
 </tr>
 <tr>
 <td>Кастомизация</td>
-<td>2 вида:<br>modern – темная тема,<br>classic – светлая тема</td>
-<td>Возможность полноценной кастомизации</td>
+<td>Возможность полной кастомизации <br>Так же 2 предустановленных темы: <br?2 вида:<br><br>modern – темная тема,<br>classic – светлая тема</td>
+<td></td>
 </tr>
 <tr>
 <td>Возможность закрытия клиентом</td>
@@ -1616,72 +1712,80 @@
 <span class="p">{</span>  <span class="c1">// customizationParams -- параметры кастомизации (не обязательны)</span>
    <span class="dl">"</span><span class="s2">appearance</span><span class="dl">"</span><span class="p">:{</span>
       <span class="dl">"</span><span class="s2">colors</span><span class="dl">"</span><span class="p">:{</span>
-         <span class="dl">"</span><span class="s2">primaryButtonColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1dfa05</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">primaryHoverButtonColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">primaryButtonTextColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">primaryButtonHoverTextColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">activeInputColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">inputBackground</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">inputColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1dfa05</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">inputBorderColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#f20505</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">titleColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">textColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1dfa05</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">errorColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#ee05fa</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">skeletonBackground</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#ee05fa</span><span class="dl">"</span>
+         <span class="dl">"</span><span class="s2">primaryButtonColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#FFB800</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">primaryHoverButtonColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#E6A600</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">primaryButtonTextColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1F2937</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">primaryButtonHoverTextColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#111827</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">activeInputColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#00AEEF</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">inputBackground</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#FFFFFF</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">inputColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1F2937</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">inputBorderColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#D9E1E8</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">titleColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1F2937</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">textColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#667085</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">errorColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#E5484D</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">skeletonBackground</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#F2F4F7</span><span class="dl">"</span>
       <span class="p">},</span>
       <span class="dl">"</span><span class="s2">borders</span><span class="dl">"</span><span class="p">:{</span>
-         <span class="dl">"</span><span class="s2">radius</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">80px</span><span class="dl">"</span>
+         <span class="dl">"</span><span class="s2">radius</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">10px</span><span class="dl">"</span>
       <span class="p">}</span>
    <span class="p">},</span>
    <span class="dl">"</span><span class="s2">components</span><span class="dl">"</span><span class="p">:{</span>
       <span class="dl">"</span><span class="s2">paymentButton</span><span class="dl">"</span><span class="p">:{</span>
-         <span class="dl">"</span><span class="s2">text</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">Свое название кнопки</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">fontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">40px</span><span class="dl">"</span>
+         <span class="dl">"</span><span class="s2">text</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">Оплатить в ТЕСТОВОМ режиме</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">fontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">16px</span><span class="dl">"</span>
       <span class="p">},</span>
       <span class="dl">"</span><span class="s2">paymentForm</span><span class="dl">"</span><span class="p">:{</span>
-         <span class="dl">"</span><span class="s2">labelFontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">5px</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">activeLabelFontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">50px</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">fontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">90px</span><span class="dl">"</span>
-      <span class="p">}</span>
+         <span class="dl">"</span><span class="s2">labelFontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">14px</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">activeLabelFontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">12px</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">fontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">16px</span><span class="dl">"</span>
    <span class="p">}</span>
 <span class="p">});</span>
 </code></pre></div>
 <p>Параметры инициализации <strong>обязательны</strong> для работы конструктора. Параметры кастомизации <strong>необязательны</strong> для работы конструктора</p>
 <h2 id='parametry-initsializatsii'>Параметры инициализации</h2>
 <p>Параметры инициализации такие же, как для <a href="#parametry">виджета</a>. <strong>Обязательны</strong> для работы конструктора</p>
-<h2 id='kastomizatsiya-platezhnogo-konstruktora'>Кастомизация платежного конструктора</h2>
+<h2 id='obnovlenie-platezhnogo-konstruktora'>Обновление платежного конструктора</h2>
+<p>Можно обновить все или часть параметров конструктора</p>
+
+<p>Для этого нужно вызвать метод update, передав туда те же параметры (или их часть), которые использовались для инициализации платежного конструктора.</p>
+
+<p>Обновляются только переданные параметры. При обновлении обязательных параметров нет, все параметры необязательные</p>
+
+<p>Со списком параметров можно <a href="#parametry">ознакомиться тут</a></p>
+<div class="highlight"><pre class="highlight javascript"><code><span class="nx">blocksApp</span><span class="p">.</span><span class="nx">update</span><span class="p">(</span><span class="nx">initializationParams</span><span class="p">);</span>
+</code></pre></div><h2 id='kastomizatsiya-platezhnogo-konstruktora'>Кастомизация платежного конструктора</h2>
 <p>Кастомизация осуществляется с помощью передачи следующего набора параметров. Необходимо передать этот объект вторым аргументом в функцию инициализации конструктора</p>
 
 <p>Параметры <strong>необязательны</strong> для работы конструктора</p>
 <div class="highlight"><pre class="highlight javascript"><code><span class="p">{</span>
    <span class="dl">"</span><span class="s2">components</span><span class="dl">"</span><span class="p">:{</span>
       <span class="dl">"</span><span class="s2">paymentButton</span><span class="dl">"</span><span class="p">:{</span>
-         <span class="dl">"</span><span class="s2">text</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">Свое название кнопки</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">fontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">40px</span><span class="dl">"</span>
+         <span class="dl">"</span><span class="s2">text</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">Оплатить в ТЕСТОВОМ режиме</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">fontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">16px</span><span class="dl">"</span>
       <span class="p">},</span>
       <span class="dl">"</span><span class="s2">paymentForm</span><span class="dl">"</span><span class="p">:{</span>
-         <span class="dl">"</span><span class="s2">labelFontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">5px</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">activeLabelFontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">50px</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">fontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">90px</span><span class="dl">"</span>
+         <span class="dl">"</span><span class="s2">labelFontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">14px</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">activeLabelFontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">12px</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">fontSize</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">16px</span><span class="dl">"</span>
       <span class="p">}</span>
    <span class="p">},</span>
    <span class="dl">"</span><span class="s2">appearance</span><span class="dl">"</span><span class="p">:{</span>
       <span class="dl">"</span><span class="s2">colors</span><span class="dl">"</span><span class="p">:{</span>
-         <span class="dl">"</span><span class="s2">primaryButtonColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1dfa05</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">primaryHoverButtonColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">primaryButtonTextColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">primaryButtonHoverTextColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">activeInputColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">inputBackground</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">inputColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1dfa05</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">inputBorderColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#f20505</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">titleColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#da1ef7</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">textColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1dfa05</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">errorColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#ee05fa</span><span class="dl">"</span><span class="p">,</span>
-         <span class="dl">"</span><span class="s2">skeletonBackground</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#ee05fa</span><span class="dl">"</span>
+         <span class="dl">"</span><span class="s2">primaryButtonColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#FFB800</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">primaryHoverButtonColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#E6A600</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">primaryButtonTextColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1F2937</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">primaryButtonHoverTextColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#111827</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">activeInputColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#00AEEF</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">inputBackground</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#FFFFFF</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">inputColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1F2937</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">inputBorderColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#D9E1E8</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">titleColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#1F2937</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">textColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#667085</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">errorColor</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#E5484D</span><span class="dl">"</span><span class="p">,</span>
+         <span class="dl">"</span><span class="s2">skeletonBackground</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">#F2F4F7</span><span class="dl">"</span>
       <span class="p">},</span>
       <span class="dl">"</span><span class="s2">borders</span><span class="dl">"</span><span class="p">:{</span>
-         <span class="dl">"</span><span class="s2">radius</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">80px</span><span class="dl">"</span>
+         <span class="dl">"</span><span class="s2">radius</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">10px</span><span class="dl">"</span>
       <span class="p">}</span>
    <span class="p">}</span>
 <span class="p">}</span>
@@ -1864,16 +1968,7 @@
 <td>Необязателен</td>
 </tr>
 </tbody></table>
-<h2 id='obnovlenie-platezhnogo-konstruktora'>Обновление платежного конструктора</h2>
-<p>Можно обновить все или часть параметров конструктора</p>
-
-<p>Для этого нужно вызвать метод update, передав туда те же параметры (или их часть), которые использовались для инициализации платежного конструктора.</p>
-
-<p>Обновляются только переданные параметры. При обновлении обязательных параметров нет, все параметры необязательные</p>
-
-<p>Со списком параметров можно <a href="#parametry">ознакомиться тут</a></p>
-<div class="highlight"><pre class="highlight javascript"><code><span class="nx">blocksApp</span><span class="p">.</span><span class="nx">update</span><span class="p">(</span><span class="nx">initializationParams</span><span class="p">);</span>
-</code></pre></div><h1 id='skript-checkout'>Скрипт checkout</h1>
+<h1 id='skript-checkout'>Скрипт checkout</h1>
 <p>Checkout — скрипт, который прописывается на вашем сайте, собирает из указанной формы карточные данные и составляет из них криптограмму для оплаты через наш API.</p>
 
 <p>Криптограмма формируется алгоритмом RSA с длиной ключа в 2048 бит и удовлетворяет стандарту по защите карточных данных. При соблюдении описанных ниже требований карточные данные к вам не попадают, но ваш сервер всё равно влияет на их безопасность.</p>
@@ -7163,7 +7258,7 @@ https://api.cloudpayments.ru/site/notifications/pay/update:</p>
 
 <p><a href="https://www.jokecamp.com/blog/examples-of-creating-base64-hashes-using-hmac-sha256-in-different-languages/" target="_blank">Примеры вычисления HMAC</a> на разных языках программирования.</p>
 
-<p>Адреса, с которых система отправляет уведомления — <strong>185.98.81.0/28</strong>, <strong>87.251.91.160/27</strong>, <strong>46.46.175.96/27</strong>, <strong>46.46.168.160/27</strong>, <strong>162.55.174.97/32</strong> и <strong>91.216.178.243/32</strong>.</p>
+<p>Адреса, с которых система отправляет уведомления — <strong>194.31.9.248</strong>, <strong>185.228.248.125</strong>, <strong>185.228.248.123</strong>, <strong>185.98.81.0/28</strong>, <strong>87.251.91.160/27</strong>, <strong>46.46.175.96/27</strong>, <strong>46.46.168.160/27</strong>, <strong>162.55.174.97/32</strong> и <strong>91.216.178.243/32</strong>.</p>
 
 <aside class="warning">В связи с мировыми трендами и выявленными уязвимостями вынуждены отказаться от поддержки протокола SSL3. Поддержка закончилась 8 июня 2020 г.</aside>  
 
@@ -7194,10 +7289,11 @@ https://api.cloudpayments.ru/site/notifications/pay/update:</p>
 <li>SDK для <a href="#sdk-dlya-android">Android</a></li>
 </ul>
 <h2 id='poluchenie-ssylki-dlya-oplaty'>Получение ссылки для оплаты</h2><h3 id='opisanie'>Описание</h3>
-<p>Метод для получения платёжной ссылки для перенаправления клиента в мобильное приложение банка.
-В ответе вернётся параметр QrUrl с URL-адресом для перенаправления клиента.</p>
+<p>Метод предназначен для получения платёжной ссылки. Поддерживает оплату в веб-версии (desktop и mobile web) и в мобильном приложении.</p>
 
-<p>Для проведения платежа, клиента надо перенаправить на полученный URL-адрес.</p>
+<p>В ответе возвращается параметр <code>QrUrl</code>, содержащий URL для перенаправления клиента. Как правило, возвращается HTTPS-ссылка, однако в зависимости от комбинации параметров <code>Device</code>, <code>Os</code> и <code>Webview</code> может быть возвращён deeplink.</p>
+
+<p>Для проведения платежа необходимо перенаправить клиента на полученный URL. При открытии ссылки в мобильном браузере может произойти автоматический переход в мобильное приложение банка.</p>
 <h3 id='adres-metoda'>Адрес метода</h3>
 <p>https://api.cloudpayments.ru/payments/qr/tinkoffpay/link</p>
 <h3 id='parametry-zaprosa'>Параметры запроса</h3>
@@ -7371,32 +7467,8 @@ https://api.cloudpayments.ru/site/notifications/pay/update:</p>
 
 </span></code></pre></div><h3 id='primer-otveta'>Пример ответа</h3><div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
     </span><span class="nl">"Model"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-        </span><span class="nl">"QrUrl"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{URL-адрес}"</span><span class="p">,</span><span class="w">         </span><span class="err">//</span><span class="w"> </span><span class="err">будет</span><span class="w"> </span><span class="err">содержать</span><span class="w"> </span><span class="err">url-адрес</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">редиректа</span><span class="w">
+        </span><span class="nl">"QrUrl"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{URL-адрес}"</span><span class="p">,</span><span class="w">         </span><span class="err">//</span><span class="w"> </span><span class="err">содержит</span><span class="w"> </span><span class="err">url-адрес</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">редиректа</span><span class="w">
         </span><span class="nl">"QrImage"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">                
-        </span><span class="nl">"TransactionId"</span><span class="p">:</span><span class="w"> </span><span class="mi">11122233344</span><span class="p">,</span><span class="w">   </span><span class="err">//</span><span class="w"> </span><span class="err">id</span><span class="w"> </span><span class="err">транзакции</span><span class="w"> </span><span class="err">CloudPayments</span><span class="w">
-        </span><span class="nl">"MerchantOrderId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"12345"</span><span class="p">,</span><span class="w">     </span><span class="err">//</span><span class="w"> </span><span class="err">переданный</span><span class="w"> </span><span class="err">InvoiceId</span><span class="w">
-        </span><span class="nl">"ProviderQrId"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w">
-        </span><span class="nl">"Amount"</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w">
-        </span><span class="nl">"Message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Created"</span><span class="p">,</span><span class="w">     
-        </span><span class="nl">"IsTest"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
-    </span><span class="p">},</span><span class="w">
-    </span><span class="nl">"Success"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
-    </span><span class="nl">"Message"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></code></pre></div><h2 id='poluchenie-qr-koda-dlya-oplaty'>Получение QR-кода для оплаты</h2><h3 id='opisanie-2'>Описание</h3>
-<p>Метод для получения QR-кода для отображения клиенту в браузере.
-В ответе вернётся параметр <code>QrImage</code> с QR-кодом в формате imageSVG для отображения клиенту. Значение строки закодировано в base64.</p>
-
-<p>Адрес метода
-https://api.cloudpayments.ru/payments/qr/tinkoffpay/image</p>
-<h3 id='parametry-zaprosa-2'>Параметры запроса</h3>
-<p><a href="#poluchenie-ssylki-dlya-oplaty">см. T-Pay. Получение ссылки для оплаты</a></p>
-<h3 id='primer-zaprosa-2'>Пример запроса</h3>
-<p><a href="#poluchenie-ssylki-dlya-oplaty">см. T-Pay. Получение ссылки для оплаты</a></p>
-<h3 id='primer-otveta-2'>Пример ответа</h3><div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
-    </span><span class="nl">"Model"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-        </span><span class="nl">"QrUrl"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">         
-        </span><span class="nl">"QrImage"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">string</span><span class="p">},</span><span class="w">            </span><span class="err">//</span><span class="w"> </span><span class="err">будет</span><span class="w"> </span><span class="err">содержать</span><span class="w"> </span><span class="err">svg</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="err">base</span><span class="mi">64</span><span class="w">
         </span><span class="nl">"TransactionId"</span><span class="p">:</span><span class="w"> </span><span class="mi">11122233344</span><span class="p">,</span><span class="w">   </span><span class="err">//</span><span class="w"> </span><span class="err">id</span><span class="w"> </span><span class="err">транзакции</span><span class="w"> </span><span class="err">CloudPayments</span><span class="w">
         </span><span class="nl">"MerchantOrderId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"12345"</span><span class="p">,</span><span class="w">     </span><span class="err">//</span><span class="w"> </span><span class="err">переданный</span><span class="w"> </span><span class="err">InvoiceId</span><span class="w">
         </span><span class="nl">"ProviderQrId"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w">
@@ -7526,7 +7598,7 @@ URL-адресом для перенаправления клиента.</p>
 <td>TtlMinutes</td>
 <td>Int</td>
 <td>Необязательный</td>
-<td>Время, в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Минимальное допустимое значение - &quot;1&quot;. Максимальное допустимое значение - &quot;129 600&quot; (90 дней).<br>Если параметр не передан, оплату можно будет совершить в течение 72 часов.</td>
+<td>Время, в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Минимальное допустимое значение - &quot;1&quot;. Максимальное допустимое значение - &quot;129 600&quot; (90 дней). <br>С 01.02.2027 г. Минимальное допустимое значение - &quot;1&quot;. Максимальное допустимое значение - &quot;43 200&quot; (30 суток). <br>Если параметр не передан, оплату можно будет совершить в течение 72 часов.</td>
 </tr>
 <tr>
 <td>SaveCard</td>
@@ -7908,12 +7980,12 @@ URL-адресом для перенаправления клиента.</p>
 
 <h2 id="sberpay-poluchenie-ssylki-dlya-oplaty">Получение ссылки для оплаты</h2>
 <h3 id='opisanie'>Описание</h3>
-<p>Метод для получения платёжной ссылки для перенаправления клиента в мобильное приложение банка. В ответе вернётся параметр <code>QrUrl</code> с
-URL-адресом для перенаправления клиента.</p>
+<p>Метод для проведения оплаты по SberPay. <br>
+При оплате с мобильного устройства в ответе вернётся параметр <code>QrUrl</code> с
+URL-адресом для перенаправления клиента. Для проведения платежа клиента надо перенаправить на полученный URL-адрес.<br>
+При оплате с десктопа на номер телефона, который указан в параметре запроса <code>Phone</code>, будет отправлен push либо SMS-сообщение со ссылкой на оплату. </p>
 
-<p>Для проведения платежа, клиента надо перенаправить на полученный URL-адрес.</p>
-
-<p>Авторизация <a href="https://en.wikipedia.org/wiki/Basic_access_authentication" target="_blank">HTTP Basic Auth</a> для данного метода не требуется. Вместо нее используется параметр идентификатора терминала <code>PublicId</code> в теле запроса.</p>
+<p>Авторизация <a href="https://en.wikipedia.org/wiki/Basic_access_authentication" target="_blank">HTTP Basic Auth</a> для данного метода не требуется. Вместо неё используется параметр идентификатора терминала <code>PublicId</code> в теле запроса.</p>
 <h3 id='adres-metoda'>Адрес метода</h3>
 <p>https://api.cloudpayments.ru/payments/qr/sberpay/link</p>
 
@@ -8012,6 +8084,12 @@ URL-адресом для перенаправления клиента.</p>
 <td>Признак устройства плательщика. <br>Возможные значения: <br><code>MobileApp</code> - вызов оплаты из мобильного приложения <br><code>DesktopWeb</code> - вызов оплаты из браузера с десктопа <br><code>Mobile</code> - вызов из браузера с мобильного устройства</td>
 </tr>
 <tr>
+<td>Phone</td>
+<td>String</td>
+<td>Необязательный</td>
+<td>Номер телефона плательщика. <br>Пример значения: <code>+79001234567</code> <br>Обязательное значение для оплаты из браузера с десктопа</td>
+</tr>
+<tr>
 <td>Browser</td>
 <td>String</td>
 <td>Обязательный</td>
@@ -8055,6 +8133,9 @@ URL-адресом для перенаправления клиента.</p>
 <h3 id="sberpay-primer-zaprosa">Пример запроса</h3>
 <div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
     </span><span class="nl">"PublicId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"test_api_00000000000000000000002"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"Os"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"Windows 7 home"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"Webview"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"Browser"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"Microsoft Edge 24.101"</span><span class="p">,</span><span class="w">
     </span><span class="nl">"Amount"</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w">
     </span><span class="nl">"Currency"</span><span class="p">:</span><span class="w"> </span><span class="s2">"RUB"</span><span class="p">,</span><span class="w">
     </span><span class="nl">"Description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Оплата по SberPay"</span><span class="p">,</span><span class="w">
@@ -8062,34 +8143,14 @@ URL-адресом для перенаправления клиента.</p>
     </span><span class="nl">"Email"</span><span class="p">:</span><span class="w"> </span><span class="s2">"email@email.com"</span><span class="p">,</span><span class="w">
     </span><span class="nl">"InvoiceId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"order_no4009"</span><span class="p">,</span><span class="w">
     </span><span class="nl">"Scheme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"charge"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"Device"</span><span class="p">:</span><span class="w"> </span><span class="s2">"DesktopWeb"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"Phone"</span><span class="p">:</span><span class="w"> </span><span class="s2">"79001234567"</span><span class="p">,</span><span class="w">
     </span><span class="nl">"SuccessRedirectUrl"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://cp.ru"</span><span class="p">,</span><span class="w">
 </span><span class="p">}</span><span class="w">
 </span></code></pre></div><h3 id='primer-otveta'>Пример ответа</h3><div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
     </span><span class="nl">"Model"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
         </span><span class="nl">"QrUrl"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sberpay://invoicing/v2?bankInvoiceId=5628ecb3ef514a48abed24e16f818f03&amp;operationType=Web2App"</span><span class="p">,</span><span class="w"> </span><span class="err">//</span><span class="w"> </span><span class="err">будет</span><span class="w"> </span><span class="err">содержать</span><span class="w"> </span><span class="err">url-адрес</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">редиректа</span><span class="w">
         </span><span class="nl">"QrImage"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">                
-        </span><span class="nl">"TransactionId"</span><span class="p">:</span><span class="w"> </span><span class="mi">11122233344</span><span class="p">,</span><span class="w"> </span><span class="err">//</span><span class="w"> </span><span class="err">id</span><span class="w"> </span><span class="err">транзакции</span><span class="w"> </span><span class="err">CloudPayments</span><span class="w">
-        </span><span class="nl">"Amount"</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="w">
-    </span><span class="p">},</span><span class="w">
-    </span><span class="nl">"Success"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
-    </span><span class="nl">"Message"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></code></pre></div>
-<h2 id="sberpay-poluchenie-qr-koda-dlya-oplaty">Получение QR-кода для оплаты</h2>
-<h3 id='opisanie-2'>Описание</h3>
-<p>Метод для получения QR-кода для отображения клиенту в браузере. В ответе вернётся параметр <code>QrImage</code> с QR-кодом в формате imageSVG для отображения клиенту. Значение строки закодировано в base64.</p>
-
-<p>Авторизация <a href="https://en.wikipedia.org/wiki/Basic_access_authentication" target="_blank">HTTP Basic Auth</a> для данного метода не требуется. Вместо нее используется параметр идентификатора терминала <code>PublicId</code> в теле запроса.</p>
-<h3 id='adres-metoda-2'>Адрес метода</h3>
-<p>https://api.cloudpayments.ru/payments/qr/sberpay/image</p>
-<h3 id='parametry-zaprosa'>Параметры запроса</h3>
-<p><a href="#sberpay-parametry-zaprosa">см. SberPay. Получение ссылки для оплаты</a></p>
-<h3 id='primer-zaprosa'>Пример запроса</h3>
-<p><a href="#sberpay-primer-zaprosa">см. SberPay. Получение ссылки для оплаты</a></p>
-<h3 id='primer-otveta-2'>Пример ответа</h3><div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
-    </span><span class="nl">"Model"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-        </span><span class="nl">"QrUrl"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> 
-        </span><span class="nl">"QrImage"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">string</span><span class="p">},</span><span class="w"> </span><span class="err">//</span><span class="w"> </span><span class="err">будет</span><span class="w"> </span><span class="err">содержать</span><span class="w"> </span><span class="err">svg</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="err">base</span><span class="mi">64</span><span class="w">
         </span><span class="nl">"TransactionId"</span><span class="p">:</span><span class="w"> </span><span class="mi">11122233344</span><span class="p">,</span><span class="w"> </span><span class="err">//</span><span class="w"> </span><span class="err">id</span><span class="w"> </span><span class="err">транзакции</span><span class="w"> </span><span class="err">CloudPayments</span><span class="w">
         </span><span class="nl">"Amount"</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="w">
     </span><span class="p">},</span><span class="w">
@@ -9281,6 +9342,12 @@ URL-адресом для перенаправления клиента.</p>
 <td style="text-align: left">Невозможно провести выплату</td>
 </tr>
 <tr>
+<td style="text-align: left">6024</td>
+<td style="text-align: left">PaymentTimeExpired</td>
+<td style="text-align: left">Распоряжение от Банка Плательщика не было получено в ожидаемое время</td>
+<td style="text-align: left">Свяжитесь с вашим банком или воспользуйтесь другой картой</td>
+</tr>
+<tr>
 <td style="text-align: left">6025</td>
 <td style="text-align: left">CrossTerminalTokenRestriction</td>
 <td style="text-align: left">Запрет кросстерминальных оплат</td>
@@ -9293,7 +9360,6 @@ URL-адресом для перенаправления клиента.</p>
 Таким образом, последующие регулярные платежи проходить не будут, необходимо повторно провести установочную операцию.<br>
 <br>
 Безусловно негативные<br>
-5005    Do Not Honor<br>
 5057    Transaction Not Permitted<br>
 5003    Invalid Merchant<br>
 5017    Customer Cancellation<br>
@@ -9306,6 +9372,7 @@ URL-адресом для перенаправления клиента.</p>
 Таким образом, данное правило необходимо учесть на своей стороне для кодов ошибок ниже.<br>
 <br>
 Условно негативные<br>
+5005    Do Not Honor<br>
 5055    Invalid PIN<br>
 5063    Security Violation<br>
 5014    Invalid Card Number<br>

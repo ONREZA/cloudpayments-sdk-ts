@@ -3,7 +3,7 @@
 Типизированный TypeScript SDK для [API CloudPayments](https://developers.cloudpayments.ru) и [CloudKassir](https://developers.cloudkassir.ru). Требует Node.js 24+; package artifact проверяется на минимальном и актуальном Node 24, unit-контракты — в Bun. Транспорт использует стандартные `fetch` и WebCrypto API.
 Публикуется один ESM artifact; `require()` поддержан встроенным в Node 24 механизмом `require(esm)`.
 
-- ✅ 1:1 с распознанными API-адресами официальной документации — 49 методов и 8 типов webhook-уведомлений
+- ✅ Покрытие распознанных методов CloudPayments/CloudKassir и 8 типов webhook-уведомлений
 - ✅ Строгая типизация запросов и ответов: `Transaction`, `Subscription`, `Order`, `TokenRecord`, `ThreeDsChallenge`
 - ✅ Типизированные Widget, PaymentBlocks и Checkout через отдельный browser subpath
 - ✅ Union-типы из справочников: `Currency`, `ReasonCode`, `TransactionStatus`, `CultureName`, …
@@ -11,6 +11,10 @@
 - ✅ Безопасный retry: read-only операции и mutation с `X-Request-ID`
 - ✅ Идемпотентность через `X-Request-ID`
 - ✅ Автоматическое распознавание 3-D Secure challenge → `CloudPayments3DsRequiredError`
+
+Прежние QR image методы T-Pay/SberPay сохранены отдельным источником совместимости:
+текущая документация больше их не описывает. Это не квалификация их доступности
+у провайдера; подробности — в [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Установка
 
@@ -35,13 +39,13 @@ import { loadCloudPaymentsWidget, waitForWidgetResult } from "@onreza/cloudpayme
 const { CloudPayments } = await loadCloudPaymentsWidget({ nonce: cspNonce });
 const widget = new CloudPayments();
 const paymentResult = widget.start({
-  publicTerminalId: "test_api_00000000000000000000002",
-  amount: 1_001,
-  currency: "RUB",
-  paymentSchema: "Single",
-  description: "Заказ #42",
-  externalId: "order-42",
-  retryPayment: false,
+	publicTerminalId: "test_api_00000000000000000000002",
+	amount: 1_001,
+	currency: "RUB",
+	paymentSchema: "Single",
+	description: "Заказ #42",
+	externalId: "order-42",
+	retryPayment: false,
 });
 const observation = await waitForWidgetResult(paymentResult, { timeoutMs: 30_000 });
 // Reconcile this checkout on your backend for BOTH reported and pending outcomes.
@@ -76,10 +80,10 @@ import { loadCloudPaymentsPaymentBlocks } from "@onreza/cloudpayments-sdk/browse
 
 const { PaymentBlocks } = await loadCloudPaymentsPaymentBlocks();
 const blocks = new PaymentBlocks({
-  publicTerminalId: "test_api_00000000000000000000002",
-  amount: 1_001,
-  currency: "RUB",
-  paymentSchema: "Single",
+	publicTerminalId: "test_api_00000000000000000000002",
+	amount: 1_001,
+	currency: "RUB",
+	paymentSchema: "Single",
 });
 blocks.on("success", (result) => console.log(result.data?.transactionId));
 blocks.mount(document.getElementById("payment-form")!);
@@ -93,9 +97,9 @@ import { loadCloudPaymentsCheckout } from "@onreza/cloudpayments-sdk/browser";
 const { Checkout } = await loadCloudPaymentsCheckout();
 const checkout = new Checkout({ publicId: "test_api_00000000000000000000002" });
 const cryptogram = await checkout.createPaymentCryptogram({
-  cardNumber: "4242 4242 4242 4242",
-  expDateMonthYear: "12/30",
-  cvv: "911",
+	cardNumber: "4242 4242 4242 4242",
+	expDateMonthYear: "12/30",
+	cvv: "911",
 });
 ```
 
@@ -112,8 +116,8 @@ positional-конструктор и `createCryptogramPacket()` намеренн
 import { CloudPaymentsClient } from "@onreza/cloudpayments-sdk";
 
 const cp = new CloudPaymentsClient({
-  publicId: process.env.CP_PUBLIC_ID!,
-  apiSecret: process.env.CP_API_SECRET!,
+	publicId: process.env.CP_PUBLIC_ID!,
+	apiSecret: process.env.CP_API_SECRET!,
 });
 ```
 
@@ -127,14 +131,14 @@ import { CloudPaymentsPublicClient } from "@onreza/cloudpayments-sdk";
 
 const publicCp = new CloudPaymentsPublicClient();
 const payment = await publicCp.dolyame.createPaymentLink(
-  {
-    PublicId: "pk_0fe1d5c9cb47e8cf8d96102201419",
-    AltPayType: "TcsBnplDolyame",
-    Amount: 1_000,
-    Scheme: "1",
-    InvoiceId: "order-42",
-  },
-  { idempotencyKey: "dolyame-order-42" },
+	{
+		PublicId: "pk_0fe1d5c9cb47e8cf8d96102201419",
+		AltPayType: "TcsBnplDolyame",
+		Amount: 1_000,
+		Scheme: "1",
+		InvoiceId: "order-42",
+	},
+	{ idempotencyKey: "dolyame-order-42" },
 );
 
 res.redirect(payment.Link);
@@ -144,34 +148,34 @@ res.redirect(payment.Link);
 
 ```ts
 import {
-  CloudPaymentsClient,
-  CloudPayments3DsRequiredError,
-  CloudPaymentsBusinessError,
+	CloudPaymentsClient,
+	CloudPayments3DsRequiredError,
+	CloudPaymentsBusinessError,
 } from "@onreza/cloudpayments-sdk";
 
 try {
-  const tx = await cp.payments.chargeCryptogram(
-    {
-      Amount: 100,
-      Currency: "RUB",
-      IpAddress: req.ip,
-      CardCryptogramPacket: req.body.cryptogram, // от Checkout.js на фронте
-      AccountId: "user_123",
-      Description: "Заказ #42",
-    },
-    { idempotencyKey: "payment-order-42" },
-  );
-  // tx.Status === "Completed", tx.TransactionId, tx.Token, …
+	const tx = await cp.payments.chargeCryptogram(
+		{
+			Amount: 100,
+			Currency: "RUB",
+			IpAddress: req.ip,
+			CardCryptogramPacket: req.body.cryptogram, // от Checkout.js на фронте
+			AccountId: "user_123",
+			Description: "Заказ #42",
+		},
+		{ idempotencyKey: "payment-order-42" },
+	);
+	// tx.Status === "Completed", tx.TransactionId, tx.Token, …
 } catch (err) {
-  if (err instanceof CloudPayments3DsRequiredError) {
-    // Редирект плательщика на err.acsUrl с передачей MD=transactionId, PaReq=err.paReq
-    res.render("3ds-redirect", { acsUrl: err.acsUrl, md: err.transactionId, paReq: err.paReq });
-  } else if (err instanceof CloudPaymentsBusinessError) {
-    // err.reasonCode — числовой код из справочника ReasonCode (5051, 5206, …)
-    // err.apiErrorCode — отдельный верхнеуровневый ErrorCode ответа API, если он был
-    // err.model — Transaction с деталями отказа
-    console.error("Отказ:", err.apiMessage, "code:", err.reasonCode);
-  }
+	if (err instanceof CloudPayments3DsRequiredError) {
+		// Редирект плательщика на err.acsUrl с передачей MD=transactionId, PaReq=err.paReq
+		res.render("3ds-redirect", { acsUrl: err.acsUrl, md: err.transactionId, paReq: err.paReq });
+	} else if (err instanceof CloudPaymentsBusinessError) {
+		// err.reasonCode — числовой код из справочника ReasonCode (5051, 5206, …)
+		// err.apiErrorCode — отдельный верхнеуровневый ErrorCode ответа API, если он был
+		// err.model — Transaction с деталями отказа
+		console.error("Отказ:", err.apiMessage, "code:", err.reasonCode);
+	}
 }
 ```
 
@@ -181,11 +185,11 @@ try {
 
 ```ts
 const tx = await cp.payments.post3ds(
-  {
-    TransactionId: Number(req.body.MD),
-    PaRes: req.body.PaRes,
-  },
-  { idempotencyKey: `post3ds-${req.body.MD}` },
+	{
+		TransactionId: Number(req.body.MD),
+		PaRes: req.body.PaRes,
+	},
+	{ idempotencyKey: `post3ds-${req.body.MD}` },
 );
 ```
 
@@ -197,28 +201,28 @@ CloudPayments и CloudKassir шлют уведомления разных тип
 import { verifyCheckWebhook, WebhookVerificationError } from "@onreza/cloudpayments-sdk/webhooks";
 
 app.post("/cp-webhook/check", async (req, res) => {
-  const contentHmac = req.get("content-hmac");
-  const signature = contentHmac ?? req.get("x-content-hmac");
+	const contentHmac = req.get("content-hmac");
+	const signature = contentHmac ?? req.get("x-content-hmac");
 
-  try {
-    const payload = await verifyCheckWebhook({
-      rawBody: req.rawBody, // сырое тело — НЕ parsed JSON
-      signature,
-      signatureKind: contentHmac ? "content-hmac" : "x-content-hmac",
-      apiSecret: process.env.CP_API_SECRET!,
-      contentType: req.get("content-type"),
-    });
-    // payload типизирован как CheckNotificationPayload
-    res.json({ code: 0 }); // одобряем платёж
-  } catch (e) {
-    if (e instanceof WebhookVerificationError) {
-      console.warn("Reject webhook:", e.reason);
-      // Authenticated parse failure можно retry; поддельную подпись — нельзя.
-      res.status(e.signatureVerified ? 500 : 401).end();
-    } else {
-      throw e;
-    }
-  }
+	try {
+		const payload = await verifyCheckWebhook({
+			rawBody: req.rawBody, // сырое тело — НЕ parsed JSON
+			signature,
+			signatureKind: contentHmac ? "content-hmac" : "x-content-hmac",
+			apiSecret: process.env.CP_API_SECRET!,
+			contentType: req.get("content-type"),
+		});
+		// payload типизирован как CheckNotificationPayload
+		res.json({ code: 0 }); // одобряем платёж
+	} catch (e) {
+		if (e instanceof WebhookVerificationError) {
+			console.warn("Reject webhook:", e.reason);
+			// Authenticated parse failure можно retry; поддельную подпись — нельзя.
+			res.status(e.signatureVerified ? 500 : 401).end();
+		} else {
+			throw e;
+		}
+	}
 });
 ```
 
@@ -230,13 +234,13 @@ app.post("/cp-webhook/check", async (req, res) => {
 `TransactionId` и даты; адаптер приложения должен сохранять их вместе со своим
 состоянием, а не заменять одним `pending`.
 
-| `Transaction.Status` | Значение для восстановления |
-|---|---|
-| `AwaitingAuthentication` | Ожидается банковская аутентификация 3-D Secure; отдельное объяснение пользователю, наблюдение той же попытки |
-| `Authorized` | Средства авторизованы; двухстадийный платёж ещё не подтверждён |
-| `Completed` | Операция завершена; сверьте её принадлежность, сумму, валюту и тип |
-| `Cancelled`, `Declined` | Операция отменена или отклонена; решение о следующей попытке принимает backend |
-| Незнакомый статус, ошибка чтения, отсутствие ответа | Исход не установлен; сохраняйте запрет на повторное списание и продолжайте сверку |
+| `Transaction.Status`                                | Значение для восстановления                                                                                  |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `AwaitingAuthentication`                            | Ожидается банковская аутентификация 3-D Secure; отдельное объяснение пользователю, наблюдение той же попытки |
+| `Authorized`                                        | Средства авторизованы; двухстадийный платёж ещё не подтверждён                                               |
+| `Completed`                                         | Операция завершена; сверьте её принадлежность, сумму, валюту и тип                                           |
+| `Cancelled`, `Declined`                             | Операция отменена или отклонена; решение о следующей попытке принимает backend                               |
+| Незнакомый статус, ошибка чтения, отсутствие ответа | Исход не установлен; сохраняйте запрет на повторное списание и продолжайте сверку                            |
 
 По [контракту CloudPayments](https://developers.cloudpayments.ru/#statusy-operatsiy)
 для `AwaitingAuthentication` нет серверной команды восстановления. Сам статус
@@ -250,8 +254,8 @@ challenge для текущего flow; после возврата банка �
 ```ts
 const tx = await cp.payments.get({ TransactionId: savedTransactionId });
 if (tx.Status === "AwaitingAuthentication") {
-  // Persist tx.Status, tx.Reason and tx.TransactionId with the existing attempt.
-  // Show: "Complete 3-D Secure in your bank. We are checking this payment."
+	// Persist tx.Status, tx.Reason and tx.TransactionId with the existing attempt.
+	// Show: "Complete 3-D Secure in your bank. We are checking this payment."
 }
 ```
 
@@ -277,32 +281,32 @@ health check и сохраняет их блокировку до установ
 ```ts
 // 1. Сначала сделать charge с SaveCard=true, получить Token
 const initial = await cp.payments.chargeCryptogram(
-  {
-    Amount: 100,
-    Currency: "RUB",
-    IpAddress: req.ip,
-    CardCryptogramPacket: req.body.cryptogram,
-    AccountId: "user_123",
-    SaveCard: true,
-  },
-  { idempotencyKey: "initial-user-123" },
+	{
+		Amount: 100,
+		Currency: "RUB",
+		IpAddress: req.ip,
+		CardCryptogramPacket: req.body.cryptogram,
+		AccountId: "user_123",
+		SaveCard: true,
+	},
+	{ idempotencyKey: "initial-user-123" },
 );
 
 // 2. Создать подписку
 const sub = await cp.subscriptions.create(
-  {
-    Token: initial.Token!,
-    AccountId: "user_123",
-    Description: "Месячная подписка Pro",
-    Email: "user@example.com",
-    Amount: 499,
-    Currency: "RUB",
-    RequireConfirmation: false,
-    StartDate: new Date().toISOString(),
-    Interval: "Month",
-    Period: 1,
-  },
-  { idempotencyKey: "subscription-user-123" },
+	{
+		Token: initial.Token!,
+		AccountId: "user_123",
+		Description: "Месячная подписка Pro",
+		Email: "user@example.com",
+		Amount: 499,
+		Currency: "RUB",
+		RequireConfirmation: false,
+		StartDate: new Date().toISOString(),
+		Interval: "Month",
+		Period: 1,
+	},
+	{ idempotencyKey: "subscription-user-123" },
 );
 ```
 
@@ -310,15 +314,15 @@ const sub = await cp.subscriptions.create(
 
 ```ts
 const tx = await cp.payments.chargeToken(
-  {
-    Amount: 499,
-    Currency: "RUB",
-    AccountId: "user_123",
-    Token: savedToken,
-    TrInitiatorCode: 0, // 0 — инициирован ТСП, 1 — пользователем
-    PaymentScheduled: 0, // 0 — без расписания
-  },
-  { idempotencyKey: "renewal-subscription-42-period-7" },
+	{
+		Amount: 499,
+		Currency: "RUB",
+		AccountId: "user_123",
+		Token: savedToken,
+		TrInitiatorCode: 0, // 0 — инициирован ТСП, 1 — пользователем
+		PaymentScheduled: 0, // 0 — без расписания
+	},
+	{ idempotencyKey: "renewal-subscription-42-period-7" },
 );
 ```
 
@@ -326,19 +330,17 @@ const tx = await cp.payments.chargeToken(
 
 ```ts
 const submitted = await cp.kkt.submitReceipt(
-  {
-    Inn: "7700000000",
-    Type: "Income",
-    InvoiceId: "order-42",
-    CustomerReceipt: {
-      Items: [
-        { label: "Подписка Pro", price: 499, quantity: 1, amount: 499, vat: 20 },
-      ],
-      taxationSystem: 0,
-      amounts: { electronic: 499 },
-    },
-  },
-  { idempotencyKey: "receipt-order-42" },
+	{
+		Inn: "7700000000",
+		Type: "Income",
+		InvoiceId: "order-42",
+		CustomerReceipt: {
+			Items: [{ label: "Подписка Pro", price: 499, quantity: 1, amount: 499, vat: 20 }],
+			taxationSystem: 0,
+			amounts: { electronic: 499 },
+		},
+	},
+	{ idempotencyKey: "receipt-order-42" },
 );
 
 const status = await cp.kkt.getReceiptStatus({ Id: submitted.Id });
@@ -361,16 +363,16 @@ const status = await cp.kkt.getReceiptStatus({ Id: submitted.Id });
 
 Иерархия (все наследуются от `CloudPaymentsError`):
 
-| Класс | Когда |
-|---|---|
-| `CloudPaymentsNetworkError` | DNS, connection или timeout для read/idempotent запроса |
+| Класс                              | Когда                                                                                                                                    |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `CloudPaymentsNetworkError`        | DNS, connection или timeout для read/idempotent запроса                                                                                  |
 | `CloudPaymentsUnknownOutcomeError` | Mutation без действующей гарантии идемпотентности получила неоднозначный network/5xx или некорректный ответ; перед повтором нужна сверка |
-| `CloudPaymentsHttpError` | HTTP non-2xx (до разбора тела) |
-| `CloudPaymentsAuthError` | 401 — неверный publicId/apiSecret |
-| `CloudPaymentsRateLimitError` | 429 — превышен лимит CP (5/30 concurrent) |
-| `CloudPaymentsBusinessError` | `{Success:false}` от CP; сохраняет `Message`, `Model`, `ReasonCode` и отдельный `ErrorCode` |
-| `CloudPayments3DsRequiredError` | Требуется 3-D Secure; содержит `acsUrl` + `paReq` + `transactionId` |
-| `CloudPaymentsSdkError` | Внутренние инварианты SDK |
+| `CloudPaymentsHttpError`           | HTTP non-2xx (до разбора тела)                                                                                                           |
+| `CloudPaymentsAuthError`           | 401 — неверный publicId/apiSecret                                                                                                        |
+| `CloudPaymentsRateLimitError`      | 429 — превышен лимит CP (5/30 concurrent)                                                                                                |
+| `CloudPaymentsBusinessError`       | `{Success:false}` от CP; сохраняет `Message`, `Model`, `ReasonCode` и отдельный `ErrorCode`                                              |
+| `CloudPayments3DsRequiredError`    | Требуется 3-D Secure; содержит `acsUrl` + `paReq` + `transactionId`                                                                      |
+| `CloudPaymentsSdkError`            | Внутренние инварианты SDK                                                                                                                |
 
 ## Справочники и типы
 
@@ -378,13 +380,13 @@ const status = await cp.kkt.getReceiptStatus({ Id: submitted.Id });
 
 ```ts
 import {
-  type TransactionStatus,    // "AwaitingAuthentication" | "Authorized" | "Completed" | "Cancelled" | "Declined"
-  type ReasonCode,           // 5001 | 5051 | ... 61 значение
-  type Currency,             // "RUB" | "USD" | ... 28 валют
-  type CultureName,          // "ru-RU" | "en-US" | "kk-KZ"
-  transactionStatusLabels,   // { Authorized: "Авторизована", ... }
-  reasonCodeLabels,          // { 5051: "Insufficient Funds", ... }
-  currencyLabels,
+	type TransactionStatus, // "AwaitingAuthentication" | "Authorized" | "Completed" | "Cancelled" | "Declined"
+	type ReasonCode, // 5001 | 5051 | ... актуальные коды провайдера
+	type Currency, // "RUB" | "USD" | ... 28 валют
+	type CultureName, // "ru-RU" | "en-US" | "kk-KZ"
+	transactionStatusLabels, // { Authorized: "Авторизована", ... }
+	reasonCodeLabels, // { 5051: "Insufficient Funds", ... }
+	currencyLabels,
 } from "@onreza/cloudpayments-sdk";
 ```
 
@@ -394,7 +396,7 @@ import {
 
 ```ts
 await cp.payments.chargeCryptogram(body, {
-  idempotencyKey: `order-${orderId}`, // X-Request-ID, результат кэшируется CP 1 час
+	idempotencyKey: `order-${orderId}`, // X-Request-ID, результат кэшируется CP 1 час
 });
 ```
 
@@ -402,9 +404,10 @@ await cp.payments.chargeCryptogram(body, {
 
 ```ts
 const cp = new CloudPaymentsClient({
-  publicId, apiSecret,
-  retry: { maxAttempts: 5, baseDelayMs: 500 },
-  timeoutMs: 30_000,
+	publicId,
+	apiSecret,
+	retry: { maxAttempts: 5, baseDelayMs: 500 },
+	timeoutMs: 30_000,
 });
 
 // Отключить retry для конкретного запроса
@@ -434,6 +437,10 @@ SDK прекращает автоматические повторы mutation, �
 за час от первой отправки текущего вызова, и возвращает
 `CloudPaymentsUnknownOutcomeError`. Возраст ключа до этого вызова SDK неизвестен:
 его контролирует приложение. Read-only сверки этим окном не ограничены.
+Если `Retry-After` превышает `retry.maxDelayMs`, автоматические повторы
+завершаются с исходной ошибкой и запрошенной задержкой `retryAfterMs`; SDK
+не повторяет запрос раньше разрешённого сервером срока. Непредставимо большое
+значение задержки обозначается `Infinity` и никогда не передаётся таймеру.
 Отмена HTTP-запроса сохраняет переданную причину abort; после отправки mutation
 это также требует сверки и не подтверждает отмену платежа.
 
@@ -443,9 +450,9 @@ SDK прекращает автоматические повторы mutation, �
 import { CloudPaymentsClient, CP_BASE_URL_KZ } from "@onreza/cloudpayments-sdk";
 
 const cp = new CloudPaymentsClient({
-  publicId,
-  apiSecret,
-  baseUrl: CP_BASE_URL_KZ,
+	publicId,
+	apiSecret,
+	baseUrl: CP_BASE_URL_KZ,
 });
 ```
 
@@ -462,8 +469,9 @@ request body не передаются. Ошибка hook не влияет на
 
 ```ts
 const cp = new CloudPaymentsClient({
-  publicId, apiSecret,
-  fetch: customFetch,
+	publicId,
+	apiSecret,
+	fetch: customFetch,
 });
 ```
 
@@ -482,7 +490,7 @@ setTimeout(() => ctrl.abort(), 5000);
 - Полная документация CloudPayments: https://developers.cloudpayments.ru
 - Документация Widget: https://widget.cloudpayments.ru/docs/widget.html
 - Полная документация CloudKassir: https://developers.cloudkassir.ru
-- Архитектура SDK и внутреннее устройство: см. [CLAUDE.md](./CLAUDE.md)
+- Разработка, устройство и релизы: см. [CONTRIBUTING.md](./CONTRIBUTING.md)
 - Примеры: [examples/](./examples/)
 
 ## Лицензия

@@ -1,6 +1,7 @@
 import type { DolyameCreatePaymentLinkRequest } from "../_generated/endpoints.js";
 import { DOLYAME_CREATE_PAYMENT_LINK_URL } from "../_generated/endpoints.js";
-import type { CloudPaymentsPublicHttpClient } from "../core/http.js";
+import { trackRequestState } from "../core/request-state.js";
+import type { PostOptions, CloudPaymentsPublicHttpClient } from "../core/http.js";
 import { CloudPaymentsSdkError } from "../errors/index.js";
 import type {
 	ApiEnvelope,
@@ -23,7 +24,7 @@ interface DolyameApiEnvelope extends ApiEnvelope<DolyameWireModel> {
 
 /** Публичный API Долями. Запросы намеренно отправляются без Basic Auth. */
 export class DolyameModule extends BaseModule {
-	// Keep the public constructor signature independent of internal transport types.
+	// eslint-disable-next-line no-useless-constructor -- Preserve the public constructor transport type.
 	constructor(http: CloudPaymentsPublicHttpClient) {
 		super(http);
 	}
@@ -33,16 +34,25 @@ export class DolyameModule extends BaseModule {
 		opts: ExecOptions = {},
 	): Promise<DolyamePayment> {
 		opts = { ...opts };
-		const env = await this.http.post<DolyameApiEnvelope>(DOLYAME_CREATE_PAYMENT_LINK_URL, body, {
-			...opts,
-			replaySafety: "requires-idempotency",
-		});
+		const requestOptions: PostOptions = { ...opts, replaySafety: "requires-idempotency" };
+		const state = trackRequestState(requestOptions);
+		const env = await this.http.post<DolyameApiEnvelope>(
+			DOLYAME_CREATE_PAYMENT_LINK_URL,
+			body,
+			requestOptions,
+		);
 		let model: DolyameWireModel;
 		try {
 			model = this.unwrap(env, false);
 		} catch (error) {
 			if (error instanceof CloudPaymentsSdkError) {
-				this.throwContractError(error, DOLYAME_CREATE_PAYMENT_LINK_URL, opts);
+				this.throwContractError(
+					error,
+					DOLYAME_CREATE_PAYMENT_LINK_URL,
+					opts,
+					"requires-idempotency",
+					state.replayDeadline,
+				);
 			}
 			throw error;
 		}
@@ -52,6 +62,8 @@ export class DolyameModule extends BaseModule {
 				new CloudPaymentsSdkError("CloudPayments Dolyame response has no payment Link"),
 				DOLYAME_CREATE_PAYMENT_LINK_URL,
 				opts,
+				"requires-idempotency",
+				state.replayDeadline,
 			);
 		}
 		const { ExtensionData: _extensionData, ...payment } = model;

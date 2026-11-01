@@ -112,7 +112,17 @@ export type WidgetReceipt =
 	| (Omit<CamelCaseKktReceipt, "items"> & { items: WidgetReceiptItem[] });
 
 /** Параметры современного `widget.start()`. */
-export interface WidgetIntentOptions {
+export interface WidgetIntentOptions extends PaymentBlocksCustomization {
+	appearance?: NonNullable<PaymentBlocksCustomization["appearance"]> & {
+		colors?: NonNullable<PaymentBlocksCustomization["appearance"]>["colors"] & {
+			background?: PaymentBlocksThemeColor;
+		};
+		backdrop?: {
+			blur?: string;
+			opacity?: number;
+			background?: PaymentBlocksThemeColor;
+		};
+	};
 	publicTerminalId: string;
 	amount: number;
 	currency: Currency;
@@ -275,7 +285,7 @@ export interface PaymentBlocksEventMap {
 
 export interface PaymentBlocks {
 	mount(element: HTMLElement): void;
-	update(params: PaymentBlocksInitialization): void;
+	update(params: Partial<PaymentBlocksInitialization>): void;
 	on<Event extends keyof PaymentBlocksEventMap>(
 		event: Event,
 		handler: (payload: PaymentBlocksEventMap[Event]) => void,

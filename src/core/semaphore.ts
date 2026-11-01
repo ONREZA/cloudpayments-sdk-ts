@@ -13,7 +13,9 @@ export class Semaphore {
 	}> = [];
 
 	constructor(concurrency: number) {
-		if (concurrency < 1) throw new RangeError("concurrency must be >= 1");
+		if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+			throw new RangeError("concurrency must be a positive safe integer");
+		}
 		this.#available = concurrency;
 	}
 

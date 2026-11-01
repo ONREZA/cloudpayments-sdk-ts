@@ -7,7 +7,7 @@ export interface RetryOptions {
 	maxAttempts?: number;
 	/** Базовая задержка в мс (для полного jitter). По умолчанию 300. */
 	baseDelayMs?: number;
-	/** Верхний потолок задержки в мс. По умолчанию 10_000. */
+	/** Backoff cap in ms. A larger Retry-After stops retries. Default: 10_000. */
 	maxDelayMs?: number;
 	/** Ретраить сетевые ошибки (fetch throw). По умолчанию true. */
 	retryOnNetworkError?: boolean;
@@ -24,7 +24,25 @@ export const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
 };
 
 export function mergeRetryOptions(user?: RetryOptions): Required<RetryOptions> {
-	return { ...DEFAULT_RETRY_OPTIONS, ...(user ?? {}) };
+	const resolved = { ...DEFAULT_RETRY_OPTIONS, ...(user ?? {}) };
+	if (!Number.isSafeInteger(resolved.maxAttempts) || resolved.maxAttempts < 1) {
+		throw new RangeError("maxAttempts must be a positive safe integer");
+	}
+	for (const option of ["baseDelayMs", "maxDelayMs"] as const) {
+		if (
+			!Number.isFinite(resolved[option]) ||
+			resolved[option] < 0 ||
+			resolved[option] > 2_147_483_647
+		) {
+			throw new RangeError(`${option} must be finite, non-negative and <= 2147483647`);
+		}
+	}
+	for (const status of resolved.retryableStatuses) {
+		if (!Number.isInteger(status) || status < 100 || status > 599) {
+			throw new RangeError(`retryableStatuses contains invalid HTTP status: ${status}`);
+		}
+	}
+	return resolved;
 }
 
 /** Экспоненциальная задержка с full-jitter. Не превышает maxDelayMs. */
@@ -60,7 +78,7 @@ export function isAbortError(err: unknown): boolean {
 /**
  * Парсит заголовок Retry-After. Возвращает задержку в мс или null, если
  * заголовок невалидный или отсутствует. Поддерживает числовую форму
- * («секунды») и HTTP-date.
+ * («секунды») и HTTP-date. Positive overflow is Infinity and must stop retries.
  */
 export function parseRetryAfter(header: string | null): number | null {
 	if (!header) return null;

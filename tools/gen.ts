@@ -10,6 +10,8 @@
 import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import compatibility from "../specs/compatibility-endpoints.json";
+import { withRollback } from "./artifacts.js";
 import { DOCS_SOURCES, type DocsSourceName } from "./docs-sources.js";
 import type { Group, IR, Param, Table } from "./parse.js";
 
@@ -107,6 +109,8 @@ const HANDBOOKS: HandbookSpec[] = [
 ];
 
 interface EndpointAlias {
+	/** Explicitly retained public URL removed from the current docs. */
+	compatibilityUrl?: string;
 	source?: DocsSourceName;
 	sectionAnchor?: string;
 	anchor: string;
@@ -180,13 +184,25 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 	},
 
 	// /payments/confirm, /void, /refund
-	{ anchor: "podtverzhdenie-oplaty", module: "payments", methodName: "confirm" },
+	{
+		anchor: "podtverzhdenie-oplaty",
+		module: "payments",
+		methodName: "confirm",
+	},
 	{ anchor: "otmena-oplaty", module: "payments", methodName: "void" },
 	{ anchor: "vozvrat-deneg", module: "payments", methodName: "refund" },
 
 	// /payments/cards/topup, /payments/tokens/topup, /payments/qr/sbp/topup
-	{ anchor: "vyplata-po-kriptogramme", module: "payments", methodName: "payoutCryptogram" },
-	{ anchor: "vyplata-po-tokenu", module: "payments", methodName: "payoutToken" },
+	{
+		anchor: "vyplata-po-kriptogramme",
+		module: "payments",
+		methodName: "payoutCryptogram",
+	},
+	{
+		anchor: "vyplata-po-tokenu",
+		module: "payments",
+		methodName: "payoutToken",
+	},
 	{ anchor: "vyplata-po-sbp", module: "payments", methodName: "payoutSbp" },
 
 	// /payments/get, /payments/list, /payments/list/v2, /payments/claims
@@ -200,7 +216,11 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 			{ match: "нового", methodName: "find" },
 		],
 	},
-	{ anchor: "vygruzka-spiska-tranzaktsiy", module: "payments", methodName: "listByDay" },
+	{
+		anchor: "vygruzka-spiska-tranzaktsiy",
+		module: "payments",
+		methodName: "listByDay",
+	},
 	{
 		anchor: "vygruzka-spiska-tranzaktsiy-za-proizvolnyy-period",
 		module: "payments",
@@ -219,8 +239,16 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 		module: "subscriptions",
 		methodName: "create",
 	},
-	{ anchor: "zapros-informatsii-o-podpiske", module: "subscriptions", methodName: "get" },
-	{ anchor: "poisk-podpisok", module: "subscriptions", methodName: "findByAccount" },
+	{
+		anchor: "zapros-informatsii-o-podpiske",
+		module: "subscriptions",
+		methodName: "get",
+	},
+	{
+		anchor: "poisk-podpisok",
+		module: "subscriptions",
+		methodName: "findByAccount",
+	},
 	{
 		anchor: "izmenenie-podpiski-na-rekurrentnye-platezhi",
 		module: "subscriptions",
@@ -233,11 +261,23 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 	},
 
 	// /orders/*
-	{ anchor: "sozdanie-scheta-dlya-otpravki-po-pochte", module: "orders", methodName: "create" },
-	{ anchor: "otmena-sozdannogo-scheta", module: "orders", methodName: "cancel" },
+	{
+		anchor: "sozdanie-scheta-dlya-otpravki-po-pochte",
+		module: "orders",
+		methodName: "create",
+	},
+	{
+		anchor: "otmena-sozdannogo-scheta",
+		module: "orders",
+		methodName: "cancel",
+	},
 
 	// /site/notifications/*
-	{ anchor: "prosmotr-nastroek-uvedomleniy", module: "settings", methodName: "getNotification" },
+	{
+		anchor: "prosmotr-nastroek-uvedomleniy",
+		module: "settings",
+		methodName: "getNotification",
+	},
 	{
 		anchor: "izmenenie-nastroek-uvedomleniy",
 		module: "settings",
@@ -256,6 +296,7 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 	{
 		sectionAnchor: "t-pay",
 		anchor: "poluchenie-qr-koda-dlya-oplaty",
+		compatibilityUrl: "https://api.cloudpayments.ru/payments/qr/tinkoffpay/image",
 		urlAnchor: "opisanie-2",
 		requestGroupAnchor: "poluchenie-ssylki-dlya-oplaty",
 		requestAnchor: "parametry-zaprosa",
@@ -298,6 +339,7 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 	{
 		sectionAnchor: "sberpay",
 		anchor: "sberpay-poluchenie-qr-koda-dlya-oplaty",
+		compatibilityUrl: "https://api.cloudpayments.ru/payments/qr/sberpay/image",
 		urlAnchor: "adres-metoda-2",
 		requestGroupAnchor: "sberpay-poluchenie-ssylki-dlya-oplaty",
 		requestAnchor: "sberpay-parametry-zaprosa",
@@ -314,7 +356,12 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 	},
 
 	// CloudKassir /kkt/*
-	{ source: "cloudkassir", anchor: "fiskalizatsiya-kassy", module: "kkt", methodName: "fiscalize" },
+	{
+		source: "cloudkassir",
+		anchor: "fiskalizatsiya-kassy",
+		module: "kkt",
+		methodName: "fiscalize",
+	},
 	{
 		source: "cloudkassir",
 		anchor: "formirovanie-kassovogo-cheka",
@@ -363,7 +410,12 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 		module: "kkt",
 		methodName: "getCorrectionReceipt",
 		paramsOverride: [
-			{ name: "Id", type: "Строка", required: true, description: "Идентификатор чека" },
+			{
+				name: "Id",
+				type: "Строка",
+				required: true,
+				description: "Идентификатор чека",
+			},
 		],
 	},
 	{
@@ -388,24 +440,54 @@ const ENDPOINT_ALIASES: EndpointAlias[] = [
 
 /** anchor из раздела уведомлений → идентификатор payload-типа */
 const WEBHOOK_PAYLOADS = [
-	{ source: "cloudpayments", anchor: "check", type: "Check", name: "CheckNotificationPayload" },
-	{ source: "cloudpayments", anchor: "pay", type: "Pay", name: "PayNotificationPayload" },
-	{ source: "cloudpayments", anchor: "fail", type: "Fail", name: "FailNotificationPayload" },
+	{
+		source: "cloudpayments",
+		anchor: "check",
+		type: "Check",
+		name: "CheckNotificationPayload",
+	},
+	{
+		source: "cloudpayments",
+		anchor: "pay",
+		type: "Pay",
+		name: "PayNotificationPayload",
+	},
+	{
+		source: "cloudpayments",
+		anchor: "fail",
+		type: "Fail",
+		name: "FailNotificationPayload",
+	},
 	{
 		source: "cloudpayments",
 		anchor: "confirm",
 		type: "Confirm",
 		name: "ConfirmNotificationPayload",
 	},
-	{ source: "cloudpayments", anchor: "refund", type: "Refund", name: "RefundNotificationPayload" },
+	{
+		source: "cloudpayments",
+		anchor: "refund",
+		type: "Refund",
+		name: "RefundNotificationPayload",
+	},
 	{
 		source: "cloudpayments",
 		anchor: "recurrent",
 		type: "Recurrent",
 		name: "RecurrentNotificationPayload",
 	},
-	{ source: "cloudpayments", anchor: "cancel", type: "Cancel", name: "CancelNotificationPayload" },
-	{ source: "cloudkassir", anchor: "receipt", type: "Receipt", name: "ReceiptNotificationPayload" },
+	{
+		source: "cloudpayments",
+		anchor: "cancel",
+		type: "Cancel",
+		name: "CancelNotificationPayload",
+	},
+	{
+		source: "cloudkassir",
+		anchor: "receipt",
+		type: "Receipt",
+		name: "ReceiptNotificationPayload",
+	},
 ] as const;
 
 const BASE_URL_PROD = "https://api.cloudpayments.ru";
@@ -447,16 +529,16 @@ function tsTypeFor(param: Param): string {
 	if (!t) return "unknown";
 	// date-format strings — "yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss", ISO-шаблоны etc. → string
 	if (/^y{2,4}[-./]/.test(t) || /datetime/.test(t) || /^date\b/.test(t)) return "string";
-	if (/^string/.test(t) || /^guid\b/.test(t) || /^url\b/.test(t) || /^строк/u.test(t))
+	if (t.startsWith("string") || /^guid\b/.test(t) || /^url\b/.test(t) || t.startsWith("строк"))
 		return "string";
 	if (/^(long|int|integer|decimal|float|double|number)/.test(t) || /^(число|целое число)/u.test(t))
 		return "number";
 	if (/^bit\b/.test(t)) return "0 | 1";
-	if (/^(bool|boolean)/.test(t) || /^булев/u.test(t)) return "boolean";
-	if (/^(array|list).*string/.test(t) || /^массив строк/u.test(t)) return "string[]";
-	if (/^json/.test(t)) return inferObjectType(param);
-	if (/^object/.test(t)) return inferObjectType(param);
-	if (/^(array|list)/.test(t) || /^массив/u.test(t)) return "unknown[]";
+	if (/^(bool|boolean)/.test(t) || t.startsWith("булев")) return "boolean";
+	if (/^(array|list).*string/.test(t) || t.startsWith("массив строк")) return "string[]";
+	if (t.startsWith("json")) return inferObjectType(param);
+	if (t.startsWith("object")) return inferObjectType(param);
+	if (/^(array|list)/.test(t) || t.startsWith("массив")) return "unknown[]";
 	return "unknown";
 }
 
@@ -598,12 +680,12 @@ function renderHandbook(spec: HandbookSpec, table: Table, sectionTitle: string):
 	return out.join("");
 }
 
-function toCamelLower(pascal: string): string {
-	return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+function toCamelLower(value: string): string {
+	return value.charAt(0).toLowerCase() + value.slice(1);
 }
 
-function pascalToScreamingSnake(pascal: string): string {
-	return pascal.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase();
+function pascalToScreamingSnake(value: string): string {
+	return value.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase();
 }
 
 /* ──────────────────────── endpoints.ts ──────────────────────── */
@@ -616,13 +698,39 @@ interface ResolvedEndpoint {
 	urls: { url: string; label: string; methodName: string }[];
 }
 
-function resolveEndpoints(irs: IRBySource): ResolvedEndpoint[] {
+export function resolveEndpoints(irs: IRBySource): ResolvedEndpoint[] {
 	const out: ResolvedEndpoint[] = [];
 	for (const alias of ENDPOINT_ALIASES) {
 		const sourceName = alias.source ?? "cloudpayments";
 		const ir = irs[sourceName];
 		const group = findGroupDeep(ir, alias.anchor, alias.sectionAnchor);
 		if (!group) {
+			const retained =
+				alias.compatibilityUrl && sourceName === "cloudpayments"
+					? compatibility.endpoints.find(
+							(entry) =>
+								entry.sectionAnchor === alias.sectionAnchor &&
+								entry.anchor === alias.anchor &&
+								entry.group.urls.some((url) => url.url === alias.compatibilityUrl),
+						)
+					: undefined;
+			if (retained && alias.compatibilityUrl) {
+				const retainedGroup = retained.group as Group;
+				out.push({
+					alias,
+					group: retainedGroup,
+					params: retainedGroup.params,
+					docsUrl: DOCS_URL,
+					urls: [
+						{
+							url: alias.compatibilityUrl,
+							label: "Retained compatibility endpoint",
+							methodName: alias.methodName,
+						},
+					],
+				});
+				continue;
+			}
 			throw new Error(`Endpoint alias not found in ${sourceName} IR: ${alias.anchor}`);
 		}
 		const urlGroup = alias.urlAnchor
@@ -660,7 +768,11 @@ function resolveEndpoints(irs: IRBySource): ResolvedEndpoint[] {
 				if (!u) {
 					throw new Error(`Endpoint URL split not matched for ${alias.anchor}: ${split.match}`);
 				}
-				resolved.push({ url: u.url, label: u.label, methodName: split.methodName });
+				resolved.push({
+					url: u.url,
+					label: u.label,
+					methodName: split.methodName,
+				});
 			}
 			out.push({ alias, group, params, docsUrl, urls: resolved });
 		} else {
@@ -753,6 +865,11 @@ function renderRequestType(typeName: string, endpoint: ResolvedEndpoint): string
 			group.title,
 			group.description.split("\n")[0] ?? "",
 			`@see ${endpoint.docsUrl}/#${group.anchor}`,
+			...(endpoint.urls.some((url) => url.label === "Retained compatibility endpoint")
+				? [
+						"Retained from the compatibility snapshot; absent from current official docs. Provider availability is unverified.",
+					]
+				: []),
 		]),
 	);
 	if (params.length === 0) {
@@ -1021,13 +1138,15 @@ async function main() {
 		["index.ts", writeIndex()],
 	];
 
-	await rm(OUT_DIR, { recursive: true, force: true });
-	await mkdir(OUT_DIR, { recursive: true });
-	for (const [name, content] of files) {
-		const out = resolve(OUT_DIR, name);
-		await writeFile(out, content);
-		console.log(`✓ Wrote src/_generated/${name} (${content.length} bytes)`);
-	}
+	await withRollback([OUT_DIR], async () => {
+		await rm(OUT_DIR, { recursive: true, force: true });
+		await mkdir(OUT_DIR, { recursive: true });
+		for (const [name, content] of files) {
+			const out = resolve(OUT_DIR, name);
+			await writeFile(out, content);
+			console.log(`✓ Wrote src/_generated/${name} (${content.length} bytes)`);
+		}
+	});
 }
 
-await main();
+if (import.meta.main) await main();

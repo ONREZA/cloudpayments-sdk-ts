@@ -3,8 +3,12 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { copyFile, readFile, writeFile } from "node:fs/promises";
 import { type CheerioAPI, load } from "cheerio";
-import type { AnyNode, Element } from "domhandler";
-import { getDocsSource } from "./docs-sources.js";
+
+import { withRollback } from "./artifacts.js";
+import { type DocsSource, getDocsSource } from "./docs-sources.js";
+
+type AnyNode = ReturnType<CheerioAPI>[number];
+type Element = Extract<AnyNode, { tagName: string }>;
 
 /* ───────────────── IR types ───────────────── */
 
@@ -66,30 +70,6 @@ export interface CodeBlock {
 /* ───────────────── Paths ───────────────── */
 
 /* ───────────────── HTML → Markdown ───────────────── */
-
-const _BLOCK_TAGS = new Set([
-	"p",
-	"ul",
-	"ol",
-	"li",
-	"br",
-	"div",
-	"blockquote",
-	"pre",
-	"table",
-	"tr",
-	"td",
-	"th",
-	"thead",
-	"tbody",
-	"aside",
-	"h1",
-	"h2",
-	"h3",
-	"h4",
-	"h5",
-	"h6",
-]);
 
 function isElement(n: AnyNode): n is Element {
 	return n.type === "tag" || n.type === "script" || n.type === "style";
@@ -299,7 +279,8 @@ function extractParams($: CheerioAPI, els: Element[]): Param[] {
 	for (const el of els) {
 		const tag = el.tagName.toLowerCase();
 		if (!foundMarker) {
-			if (tag === "p" && /^Параметры запроса/iu.test(innerText($, el))) foundMarker = true;
+			if (tag === "p" && innerText($, el).toLowerCase().startsWith("параметры запроса"))
+				foundMarker = true;
 			else if (tag === "table") {
 				const table = parseTable($, el);
 				if (looksLikeParamTable(table)) return tableToParams(table);
@@ -347,8 +328,8 @@ function firstOfKeys(row: Record<string, string>, keys: string[]): string {
 function parseRequired(raw: string): boolean {
 	const v = raw.toLowerCase().trim();
 	if (!v) return false;
-	if (/^обязат/u.test(v)) return true;
-	if (/^необязат/u.test(v)) return false;
+	if (v.startsWith("обязат")) return true;
+	if (v.startsWith("необязат")) return false;
 	if (v === "да" || v === "yes") return true;
 	if (v === "нет" || v === "no") return false;
 	return false;
@@ -441,9 +422,9 @@ function extractCodeBlocks(
 		const tag = el.tagName.toLowerCase();
 		if (tag === "p") {
 			const strongText = innerText($, $(el).find("strong").first()[0] ?? el);
-			if (/^Пример запроса/iu.test(strongText)) {
+			if (strongText.toLowerCase().startsWith("пример запроса")) {
 				pendingLabel = { kind: "request", label: extractExampleLabel($, el) };
-			} else if (/^Пример ответа/iu.test(strongText)) {
+			} else if (strongText.toLowerCase().startsWith("пример ответа")) {
 				pendingLabel = { kind: "response", label: extractExampleLabel($, el) };
 			}
 			continue;
@@ -575,11 +556,19 @@ export function parseHtml(html: string, docsUrl: string): IR {
 
 /* ───────────────── Main ───────────────── */
 
+export async function saveIR(source: DocsSource, ir: IR): Promise<void> {
+	const content = `${JSON.stringify(ir, null, 2)}\n`;
+	if (existsSync(source.irPath)) {
+		if ((await readFile(source.irPath, "utf8")) === content) return;
+		await copyFile(source.irPath, source.previousIrPath);
+	}
+	await writeFile(source.irPath, content);
+}
+
 async function main() {
 	const source = getDocsSource(process.argv[2]);
 	const rawPath = source.rawPath;
 	const irPath = source.irPath;
-	const previousIrPath = source.previousIrPath;
 
 	if (!existsSync(rawPath)) {
 		console.error(`✗ ${rawPath} not found. Run \`bun run docs:scrape ${source.name}\` first.`);
@@ -606,10 +595,7 @@ async function main() {
 	);
 	console.log(`  ${sections.length} sections, ${groupCount} groups, ${endpointCount} endpoints`);
 
-	if (existsSync(irPath)) {
-		await copyFile(irPath, previousIrPath);
-	}
-	await writeFile(irPath, `${JSON.stringify(ir, null, 2)}\n`);
+	await withRollback([irPath, source.previousIrPath], () => saveIR(source, ir));
 	console.log(`✓ Wrote ${irPath}`);
 }
 

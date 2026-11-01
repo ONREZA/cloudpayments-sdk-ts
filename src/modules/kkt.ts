@@ -26,6 +26,8 @@ import {
 	KKT_VALIDATE_MARK_CODE_URL,
 	KKT_VALIDATE_MARK_CODES_URL,
 } from "../_generated/endpoints.js";
+import type { PostOptions } from "../core/http.js";
+import { trackRequestState } from "../core/request-state.js";
 import { CloudPaymentsSdkError } from "../errors/index.js";
 import type {
 	KktCashRegisterState,
@@ -253,16 +255,15 @@ export class KktModule extends BaseModule {
 		parse: (env: KktEnvelope<TModel>) => TResult,
 	): Promise<TResult> {
 		const options = { ...opts };
-		const env = await this.http.post<KktEnvelope<TModel>>(url, body, {
-			...options,
-			replaySafety: "requires-idempotency",
-		});
+		const requestOptions: PostOptions = { ...options, replaySafety: "requires-idempotency" };
+		const state = trackRequestState(requestOptions);
+		const env = await this.http.post<KktEnvelope<TModel>>(url, body, requestOptions);
 		try {
 			this.unwrap(env, false, true);
 			return parse(env);
 		} catch (error) {
 			if (error instanceof CloudPaymentsSdkError) {
-				this.throwContractError(error, url, options);
+				this.throwContractError(error, url, options, "requires-idempotency", state.replayDeadline);
 			}
 			throw error;
 		}

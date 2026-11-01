@@ -52,9 +52,7 @@ export type WebhookVerificationReason =
 export type WebhookSignatureKind = "content-hmac" | "x-content-hmac";
 
 export type WebhookVerificationStage =
-	| "pre_verification"
-	| "signature_verification"
-	| "body_parsing";
+	"pre_verification" | "signature_verification" | "body_parsing";
 
 export class WebhookVerificationError extends Error {
 	/** `true` только после успешного сравнения HMAC, до разбора payload. */

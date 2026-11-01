@@ -48,6 +48,8 @@ export class CloudPaymentsHttpError extends CloudPaymentsError {
 		public readonly status: number,
 		public readonly statusText: string,
 		public readonly body: string,
+		/** Full server delay, or Infinity when it cannot be represented. */
+		public readonly retryAfterMs: number | null = null,
 	) {
 		super(`HTTP ${status} ${statusText}`);
 		this.name = "CloudPaymentsHttpError";
@@ -65,12 +67,8 @@ export class CloudPaymentsAuthError extends CloudPaymentsHttpError {
 
 /** 429 — слишком много запросов. */
 export class CloudPaymentsRateLimitError extends CloudPaymentsHttpError {
-	constructor(
-		statusText: string,
-		body: string,
-		public readonly retryAfterMs: number | null,
-	) {
-		super(429, statusText, body);
+	constructor(statusText: string, body: string, retryAfterMs: number | null) {
+		super(429, statusText, body, retryAfterMs);
 		this.name = "CloudPaymentsRateLimitError";
 	}
 }

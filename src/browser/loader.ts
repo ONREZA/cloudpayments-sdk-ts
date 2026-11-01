@@ -13,10 +13,7 @@ export const CLOUDPAYMENTS_CHECKOUT_SCRIPT_URL = "https://checkout.cloudpayments
 
 export type BrowserScriptKind = "widget" | "payment-blocks" | "checkout";
 export type BrowserScriptLoadErrorCode =
-	| "browser_unavailable"
-	| "script_load_failed"
-	| "script_timeout"
-	| "namespace_missing";
+	"browser_unavailable" | "script_load_failed" | "script_timeout" | "namespace_missing";
 
 export class CloudPaymentsBrowserLoadError extends Error {
 	constructor(
@@ -132,7 +129,8 @@ function appendScript<T extends CloudPaymentsBrowserNamespace>(
 			script.removeEventListener("load", onLoad);
 			script.removeEventListener("error", onError);
 			if (error) {
-				if (created) script.remove();
+				// A timed-out adopted script may still load; observed terminal failures cannot recover.
+				if (created || error.code !== "script_timeout") script.remove();
 				reject(error);
 			} else {
 				resolve(getNamespace(document) as T);

@@ -23,7 +23,7 @@ jobs:
   provider-read:
     name: Provider read contract
     if: inputs.suite == 'read'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       CP_TEST_PUBLIC_ID: ${{ secrets.CP_TEST_PUBLIC_ID }}
@@ -33,7 +33,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.3
+          bun-version-file: package.json
 
       - run: bun install --frozen-lockfile
 
@@ -52,7 +52,7 @@ jobs:
   provider-full:
     name: Provider mutation contract
     if: inputs.suite == 'full'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: cloudpayments-test
     env:
@@ -63,7 +63,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.3
+          bun-version-file: package.json
 
       - run: bun install --frozen-lockfile
 

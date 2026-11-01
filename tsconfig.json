@@ -4,7 +4,7 @@
 		"outDir": "./dist",
 		"rootDir": ".",
 		"noEmit": true,
-		"types": ["bun-types"]
+		"types": []
 	},
-	"include": ["src/**/*.ts", "tools/**/*.ts", "test/**/*.ts"]
+	"include": ["src/**/*.ts", "test/type-contracts.ts", "test/browser-type-contracts.ts"]
 }

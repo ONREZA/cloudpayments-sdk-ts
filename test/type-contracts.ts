@@ -5,6 +5,7 @@ import type {
 	KktRussiaTimeZone,
 	KktUnitCode,
 	NotificationType,
+	ReasonCode,
 	OrdersCreateRequest,
 	PaymentsAuthTokenRequest,
 	PaymentsChargeTokenRequest,
@@ -62,9 +63,7 @@ type _OrderSubscriptionBehavior = Expect<
 	Equal<NonNullable<OrdersCreateRequest["SubscriptionBehavior"]>, "CreateWeekly" | "CreateMonthly">
 >;
 
-type _FailReasonCode = Expect<
-	Equal<FailNotificationPayload["ReasonCode"], import("../src/index.js").ReasonCode>
->;
+type _FailReasonCode = Expect<Equal<FailNotificationPayload["ReasonCode"], ReasonCode>>;
 type _RecurrentInterval = Expect<
 	Equal<RecurrentNotificationPayload["Interval"], "Day" | "Week" | "Month">
 >;

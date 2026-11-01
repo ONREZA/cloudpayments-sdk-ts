@@ -20,6 +20,15 @@ const intent: WidgetIntentOptions = {
 	paymentSchema: "Single",
 	restrictedPaymentMethods: ["Sbp", "Dolyame"],
 	emailBehavior: "Optional",
+	components: {
+		paymentButton: { text: "Pay", fontSize: "16px" },
+		paymentForm: { fontSize: "16px", labelFontSize: "14px", activeLabelFontSize: "12px" },
+	},
+	appearance: {
+		colors: { primaryButtonColor: "#1dfa05", background: "#ffffff" },
+		borders: { radius: "10px" },
+		backdrop: { blur: "8", opacity: 0.5, background: "#6b7cd1" },
+	},
 	receipt: {
 		items: [
 			{
@@ -73,7 +82,9 @@ void new PaymentBlocksClass(
 		},
 	},
 );
-blocks.update({ ...intent, amount: 200 });
+blocks.update({ amount: 200 });
+// @ts-expect-error Partial updates retain the initialization field types.
+blocks.update({ amount: "200" });
 blocks.on("success", (result) => result.data?.transactionId);
 void checkout.createPaymentCryptogram({
 	cardNumber: "4242 4242 4242 4242",
@@ -82,17 +93,17 @@ void checkout.createPaymentCryptogram({
 });
 void new CheckoutClass({ publicId: "pk_test" });
 // @ts-expect-error Legacy Widget API намеренно не входит в публичный type surface.
-widget.pay;
+void widget.pay;
 // @ts-expect-error Legacy Widget API намеренно не входит в публичный type surface.
-widget.charge;
+void widget.charge;
 // @ts-expect-error Legacy Widget API намеренно не входит в публичный type surface.
-widget.auth;
+void widget.auth;
 // @ts-expect-error Устаревший синхронный Checkout API намеренно не поддерживается.
-checkout.createCryptogramPacket;
+void checkout.createCryptogramPacket;
 // @ts-expect-error Устаревший positional-конструктор Checkout намеренно не поддерживается.
-new CheckoutClass("pk_test");
+void new CheckoutClass("pk_test");
 // @ts-expect-error Checkout принимает HTMLElement, а не CSS selector.
-new CheckoutClass({ publicId: "pk_test", container: "#payment-form" });
+void new CheckoutClass({ publicId: "pk_test", container: "#payment-form" });
 
 const validationErrors: CheckoutValidationErrors = { cardNumber: "CardNumber_Invalid" };
 const dolyameRequest: DolyameCreatePaymentLinkRequest = {

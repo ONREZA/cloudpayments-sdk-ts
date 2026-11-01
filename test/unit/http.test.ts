@@ -7,6 +7,7 @@ import {
 import {
 	CloudPaymentsAuthError,
 	CloudPaymentsHttpError,
+	CloudPaymentsNetworkError,
 	CloudPaymentsRateLimitError,
 	CloudPaymentsSdkError,
 	CloudPaymentsUnknownOutcomeError,
@@ -20,6 +21,47 @@ function mockFetch(fn: (url: string, init: RequestInit) => Promise<Response>): t
 const creds = { publicId: "pk_test", apiSecret: "secret" };
 
 describe("CloudPaymentsHttpClient.post", () => {
+	test.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, 2_147_483_648])(
+		"rejects invalid timeoutMs at construction: %s",
+		(timeoutMs) => {
+			expect(() => new CloudPaymentsHttpClient({ credentials: creds, timeoutMs })).toThrow(
+				RangeError,
+			);
+		},
+	);
+	test("rejects invalid retry and concurrency at construction", () => {
+		expect(
+			() => new CloudPaymentsHttpClient({ credentials: creds, retry: { maxAttempts: 0 } }),
+		).toThrow(RangeError);
+		expect(() => new CloudPaymentsPublicHttpClient({ concurrency: Number.NaN })).toThrow(
+			RangeError,
+		);
+	});
+	test("rejects per-call retry options before serialization or fetch", async () => {
+		let calls = 0;
+		let serialized = false;
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetch(async () => {
+				calls++;
+				return Response.json({ Success: true });
+			}),
+		});
+		await expect(
+			client.post(
+				"/",
+				{
+					toJSON: () => {
+						serialized = true;
+						return {};
+					},
+				},
+				{ retry: { maxAttempts: 0 } },
+			),
+		).rejects.toBeInstanceOf(RangeError);
+		expect(serialized).toBe(false);
+		expect(calls).toBe(0);
+	});
 	test("sends POST with Basic auth, JSON body, Content-Type", async () => {
 		const captured: { init?: RequestInit } = {};
 		const client = new CloudPaymentsHttpClient({
@@ -161,6 +203,94 @@ describe("CloudPaymentsHttpClient.post", () => {
 		expect(calls).toBe(2);
 	});
 
+	test("does not retry 429 excluded by per-call retryableStatuses", async () => {
+		let calls = 0;
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxAttempts: 3, baseDelayMs: 0, maxDelayMs: 0 },
+			fetch: mockFetch(async () => {
+				calls++;
+				return new Response("limited", { status: 429, headers: { "Retry-After": "0" } });
+			}),
+		});
+		await expect(
+			client.post("/", {}, { replaySafety: "safe", retry: { retryableStatuses: [] } }),
+		).rejects.toBeInstanceOf(CloudPaymentsRateLimitError);
+		expect(calls).toBe(1);
+	});
+
+	test.each([429, 503])(
+		"HTTP %d Retry-After above the budget stops without waiting",
+		async (status) => {
+			for (const header of [
+				"3600",
+				"9".repeat(400),
+				new Date(Date.now() + 3_600_000).toUTCString(),
+			]) {
+				let calls = 0;
+				const client = new CloudPaymentsHttpClient({
+					credentials: creds,
+					retry: { maxAttempts: 3, maxDelayMs: 20, baseDelayMs: 0 },
+					fetch: mockFetch(async () => {
+						calls++;
+						return new Response("provider failure", { status, headers: { "Retry-After": header } });
+					}),
+				});
+				const timer = spyOn(globalThis, "setTimeout");
+				try {
+					await expect(
+						client.post("/", {}, { replaySafety: "safe", signal: AbortSignal.timeout(20) }),
+					).rejects.toMatchObject({
+						status,
+						body: "provider failure",
+						retryAfterMs: /^9+$/.test(header) ? Number.POSITIVE_INFINITY : expect.any(Number),
+					});
+					expect(calls).toBe(1);
+					expect(timer.mock.calls.every((call) => call[1] === 60_000)).toBe(true);
+				} finally {
+					timer.mockRestore();
+				}
+			}
+		},
+	);
+	test("within-budget Retry-After uses the server delay for 503", async () => {
+		let calls = 0;
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxDelayMs: 1000 },
+			fetch: mockFetch(async () =>
+				++calls === 1
+					? new Response("busy", { status: 503, headers: { "Retry-After": "1" } })
+					: Response.json({ Success: true }),
+			),
+		});
+		const original = globalThis.setTimeout;
+		const timer = spyOn(globalThis, "setTimeout").mockImplementation(((
+			...args: Parameters<typeof setTimeout>
+		) => original(args[0], args[1] === 1000 ? 0 : args[1], ...args.slice(2))) as typeof setTimeout);
+		try {
+			await expect(client.post("/", {}, { replaySafety: "safe" })).resolves.toEqual({
+				Success: true,
+			});
+			expect(timer.mock.calls.some((call) => call[1] === 1000)).toBe(true);
+			expect(calls).toBe(2);
+		} finally {
+			timer.mockRestore();
+		}
+	});
+	test("a mutation 503 retains unknown outcome with the server delay as its cause", async () => {
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			fetch: mockFetch(
+				async () => new Response("busy", { status: 503, headers: { "Retry-After": "3600" } }),
+			),
+		});
+		await expect(client.post("/", {})).rejects.toMatchObject({
+			name: "CloudPaymentsUnknownOutcomeError",
+			cause: { status: 503, retryAfterMs: 3_600_000 },
+		});
+	});
+
 	test("throws CloudPaymentsRateLimitError after 429 retries exhausted", async () => {
 		const client = new CloudPaymentsHttpClient({
 			credentials: creds,
@@ -251,7 +381,7 @@ describe("CloudPaymentsHttpClient.post", () => {
 		expect(requestIds).toEqual(["payment-42", "payment-42"]);
 	});
 
-	test("refuses a mutation retry delayed beyond the provider idempotency window", async () => {
+	test("returns the provider refusal when Retry-After exceeds the retry budget", async () => {
 		let calls = 0;
 		const client = new CloudPaymentsHttpClient({
 			credentials: creds,
@@ -263,8 +393,106 @@ describe("CloudPaymentsHttpClient.post", () => {
 
 		await expect(
 			client.post("/", {}, { idempotencyKey: "payment-42", signal: AbortSignal.timeout(10) }),
-		).rejects.toBeInstanceOf(CloudPaymentsUnknownOutcomeError);
+		).rejects.toMatchObject({ status: 429, retryAfterMs: 3_600_000 });
 		expect(calls).toBe(1);
+	});
+
+	test.each(["network", "body", "json", "http"] as const)(
+		"reports expired idempotency protection after the final ambiguous %s failure",
+		async (failure) => {
+			const clock = spyOn(performance, "now").mockReturnValue(0);
+			try {
+				const client = new CloudPaymentsHttpClient({
+					credentials: creds,
+					retry: { maxAttempts: 1 },
+					fetch: mockFetch(async () => {
+						clock.mockReturnValue(3_600_000);
+						if (failure === "network") throw new Error("connection lost");
+						if (failure === "body") {
+							return new Response(
+								new ReadableStream({
+									start(controller) {
+										controller.error(new Error("body lost"));
+									},
+								}),
+							);
+						}
+						return new Response("bad response", { status: failure === "http" ? 503 : 200 });
+					}),
+				});
+				await expect(client.post("/", {}, { idempotencyKey: "payment-42" })).rejects.toBeInstanceOf(
+					CloudPaymentsUnknownOutcomeError,
+				);
+			} finally {
+				clock.mockRestore();
+			}
+		},
+	);
+
+	test("preserves the caller abort reason after idempotency protection expires", async () => {
+		const clock = spyOn(performance, "now").mockReturnValue(0);
+		const abort = new AbortController();
+		const reason = new Error("caller cancelled");
+		try {
+			const client = new CloudPaymentsHttpClient({
+				credentials: creds,
+				fetch: mockFetch(async () => {
+					clock.mockReturnValue(3_600_000);
+					abort.abort(reason);
+					throw reason;
+				}),
+			});
+			await expect(
+				client.post(
+					"/",
+					{},
+					{
+						idempotencyKey: "payment-42",
+						signal: abort.signal,
+					},
+				),
+			).rejects.toBe(reason);
+		} finally {
+			clock.mockRestore();
+		}
+	});
+
+	test("keeps the timeout active while reading the response body", async () => {
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			timeoutMs: 1,
+			retry: { maxAttempts: 1 },
+			fetch: mockFetch(
+				async (_url, init) =>
+					new Response(
+						new ReadableStream({
+							start(controller) {
+								init.signal?.addEventListener(
+									"abort",
+									() => controller.error(init.signal?.reason),
+									{ once: true },
+								);
+							},
+						}),
+					),
+			),
+		});
+		await expect(client.post("/", {}, { replaySafety: "safe" })).rejects.toBeInstanceOf(
+			CloudPaymentsNetworkError,
+		);
+	});
+
+	test("a keyed mutation network failure within the protection window stays a network error", async () => {
+		const client = new CloudPaymentsHttpClient({
+			credentials: creds,
+			retry: { maxAttempts: 1 },
+			fetch: mockFetch(async () => {
+				throw new Error("connection lost");
+			}),
+		});
+		await expect(client.post("/", {}, { idempotencyKey: "payment-42" })).rejects.toBeInstanceOf(
+			CloudPaymentsNetworkError,
+		);
 	});
 
 	test.each(["safe", "requires-idempotency"] as const)(

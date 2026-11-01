@@ -69,6 +69,7 @@ const server = Bun.serve({
 		const contentHmac = req.headers.get("content-hmac");
 		const signature = contentHmac ?? req.headers.get("x-content-hmac");
 		const rawBody = await req.text();
+		const contentType = req.headers.get("content-type");
 
 		try {
 			const payload = await VERIFIERS[type]({
@@ -76,7 +77,7 @@ const server = Bun.serve({
 				signature,
 				signatureKind: contentHmac ? "content-hmac" : "x-content-hmac",
 				apiSecret: API_SECRET,
-				contentType: req.headers.get("content-type") ?? undefined,
+				...(contentType !== null ? { contentType } : {}),
 			});
 			const response = handleEvent(type, payload);
 			return Response.json(response);

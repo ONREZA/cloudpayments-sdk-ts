@@ -652,6 +652,7 @@ export const T_PAY_CREATE_LINK_URL = "/payments/qr/tinkoffpay/link" as const;
 /**
  * Получение QR-кода для оплаты
  * @see https://developers.cloudpayments.ru/#poluchenie-qr-koda-dlya-oplaty
+ * Retained from the compatibility snapshot; absent from current official docs. Provider availability is unverified.
  */
 export interface TPayCreateQrImageRequest {
 	/** Идентификатор сайта, который находится в ЛК */
@@ -729,7 +730,7 @@ export interface SbpCreateLinkRequest {
 	Device?: "MobileApp" | "DesktopWeb" | "Mobile";
 	/** Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera` */
 	Browser?: string;
-	/** Время, в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Минимальное допустимое значение - "1". Максимальное допустимое значение - "129 600" (90 дней). Если параметр не передан, оплату можно будет совершить в течение 72 часов. */
+	/** Время, в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Минимальное допустимое значение - "1". Максимальное допустимое значение - "129 600" (90 дней). С 01.02.2027 г. Минимальное допустимое значение - "1". Максимальное допустимое значение - "43 200" (30 суток). Если параметр не передан, оплату можно будет совершить в течение 72 часов. */
 	TtlMinutes?: number | null;
 	/** Флаг необходимости сохранить карту для привязки счета в Национальной Системе Платежных Карт для последующих списаний */
 	SaveCard?: boolean;
@@ -774,7 +775,7 @@ export interface SbpCreateQrImageRequest {
 	Device?: "MobileApp" | "DesktopWeb" | "Mobile";
 	/** Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera` */
 	Browser?: string;
-	/** Время, в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Минимальное допустимое значение - "1". Максимальное допустимое значение - "129 600" (90 дней). Если параметр не передан, оплату можно будет совершить в течение 72 часов. */
+	/** Время, в течение которого будет доступна оплата по QR-коду / ссылке на оплату. Минимальное допустимое значение - "1". Максимальное допустимое значение - "129 600" (90 дней). С 01.02.2027 г. Минимальное допустимое значение - "1". Максимальное допустимое значение - "43 200" (30 суток). Если параметр не передан, оплату можно будет совершить в течение 72 часов. */
 	TtlMinutes?: number | null;
 	/** Флаг необходимости сохранить карту для привязки счета в Национальной Системе Платежных Карт для последующих списаний */
 	SaveCard?: boolean;
@@ -833,6 +834,8 @@ export interface SberPayCreateLinkRequest {
 	Webview: boolean;
 	/** Признак устройства плательщика. Возможные значения: `MobileApp` - вызов оплаты из мобильного приложения `DesktopWeb` - вызов оплаты из браузера с десктопа `Mobile` - вызов из браузера с мобильного устройства */
 	Device: "MobileApp" | "DesktopWeb" | "Mobile";
+	/** Номер телефона плательщика. Пример значения: `+79001234567` Обязательное значение для оплаты из браузера с десктопа */
+	Phone?: string;
 	/** Название браузера клиента на основании userAgent браузера. Пример значения: `Chrome`, `Firefox`, `MIUI Browser`, `Opera` */
 	Browser: string;
 }
@@ -842,6 +845,7 @@ export const SBER_PAY_CREATE_LINK_URL = "/payments/qr/sberpay/link" as const;
 /**
  * Получение QR-кода для оплаты
  * @see https://developers.cloudpayments.ru/#sberpay-poluchenie-qr-koda-dlya-oplaty
+ * Retained from the compatibility snapshot; absent from current official docs. Provider availability is unverified.
  */
 export interface SberPayCreateQrImageRequest {
 	/** Идентификатор сайта, который находится в ЛК */

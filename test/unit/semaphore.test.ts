@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { Semaphore } from "../../src/core/semaphore.js";
 
 describe("Semaphore", () => {
-	test("concurrency < 1 throws", () => {
-		expect(() => new Semaphore(0)).toThrow(RangeError);
-	});
+	test.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 53])(
+		"rejects invalid concurrency: %s",
+		(concurrency) => {
+			expect(() => new Semaphore(concurrency)).toThrow(RangeError);
+		},
+	);
 
 	test("allows up to N concurrent", async () => {
 		const sem = new Semaphore(2);

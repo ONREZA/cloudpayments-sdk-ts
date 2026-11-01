@@ -1,0 +1,15 @@
+{
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": ".",
+		"types": ["@types/bun"],
+		"paths": {
+			"@onreza/cloudpayments-sdk": ["./src/index.ts"],
+			"@onreza/cloudpayments-sdk/webhooks": ["./src/webhooks/index.ts"],
+			"@onreza/cloudpayments-sdk/errors": ["./src/errors/index.ts"],
+			"@onreza/cloudpayments-sdk/browser": ["./src/browser/index.ts"]
+		}
+	},
+	"include": ["tools/**/*.ts", "test/**/*.ts", "examples/**/*.ts"]
+}
